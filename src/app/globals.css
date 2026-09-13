@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 1. Tell Tailwind v4 to trigger dark: utilities when the .dark class is present */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* gleamLearn Brand Color System */
+  --color-brand-blue: #2563EB;
+  --color-brand-green: #10B981;
+  --color-brand-orange: #F97316;
+  --color-brand-purple: #7C3AED;
+  --color-brand-red: #EF4444;
+
+  /* Dark Neutral System */
+  --color-dark-bg: #0B0F19;
+  --color-dark-card: #111827;
+  --color-dark-border: #1F2937;
+
+  /* Keyframe Animations */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-gradient-shift: gradientShift 8s ease infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* 2. Light mode default body styles */
+  body {
+    background-color: #ffffff;
+    color: #111827;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  /* 3. Dark mode body styles when .dark class is active on <html> */
+  .dark body {
+    background-color: #0B0F19;
+    color: #F3F4F6;
+  }
+}
+
+/* Custom scrollbar for modern sleek UI */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0F19;
+}
+::-webkit-scrollbar-thumb {
+  background: #1F2937;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
