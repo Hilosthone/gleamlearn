@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GleamLearn AI 🚀
 
-## Getting Started
+> Transform any document, textbook, or lecture note into an interactive, gamified learning experience powered by advanced AI.
 
-First, run the development server:
+---
+
+## 🌟 Overview
+
+**GleamLearn** is an AI-native educational platform designed to bridge the gap between static study materials and active learning. By leveraging a high-performance **FastAPI microservice** for document analysis and a fluid **Next.js** web interface, GleamLearn instantly converts dense PDFs, notes, and textbook chapters into structured lessons, smart quizzes, flashcards, and interactive AI tutoring sessions.
+
+---
+
+## ✨ Key Features
+
+* **📄 Upload-to-Learn Pipeline:** Drag and drop PDFs, lecture slides, or text files. Our backend automatically parses, chunks, and structures the content for personalized curriculum generation.
+* **🤖 Smart AI Tutor & Classroom:** Context-aware AI tutoring that answers student inquiries directly referencing the uploaded source materials, complete with step-by-step explanations.
+* **🔥 Gamified Streaks & XP:** Keep learners motivated with daily streaks, experience points (XP), and leaderboards that turn studying into a habit.
+* **🌓 Seamless Theme Switching:** Fully responsive design supporting both clean light and immersive dark modes out of the box.
+* **📱 Modern Glassmorphism UI:** Built with Framer Motion animations and Tailwind CSS for a smooth, high-end user experience.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS, Framer Motion, Lucide Icons
+* **Backend:** Python, FastAPI, Render (Cloud Deployment)
+* **Database & Storage:** PostgreSQL / MongoDB / Supabase integrations
+
+---
+
+## 🚀 Getting Started Locally
+
+Follow these instructions to set up the project locally on your machine.
+
+### Prerequisites
+
+* Node.js (v18+ recommended)
+* Python (v3.10+)
+* npm, yarn, or pnpm
+
+### 1. Clone the Repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/Hilosthone/gleamlearn
+cd gleamlearn
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Frontend Setup (Next.js)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Navigate to the frontend directory (if separated) or root
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Run the development server
+npm run dev
 
-## Learn More
+```
 
-To learn more about Next.js, take a look at the following resources:
+The application will be available at `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Backend Setup (FastAPI)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Navigate to the backend directory
+cd backend
 
-## Deploy on Vercel
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Install dependencies
+pip install -r requirements.txt
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Run the FastAPI server
+uvicorn main:app --reload
+
+```
+
+Interactive API documentation will be available at `http://localhost:8000/docs`.
+
+---
+
+## 👨‍💻 Founder & Leadership
+
+* **Hilosthone Sulyman** – *Founder & CEO*
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
