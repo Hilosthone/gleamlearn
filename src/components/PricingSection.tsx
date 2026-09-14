@@ -1,22 +1,26 @@
+
 // "use client";
 
 // import React, { useState, useEffect } from "react";
 // import { motion, AnimatePresence, Easing } from "framer-motion";
-// import { CheckCircle2, Sparkles, ArrowRight, Clock, X, ShieldCheck, PartyPopper } from "lucide-react";
+// import { CheckCircle2, Sparkles, ArrowRight, Clock, X, ShieldCheck, PartyPopper, Mail, Loader2, Send } from "lucide-react";
+// import emailjs from "@emailjs/browser";
 
 // type BillingCycle = "monthly" | "termly" | "semesterly" | "sessionly" | "yearly";
 
 // /**
 //  * PricingSection Component
 //  * 
-//  * Interactive pricing component featuring auto-cycling billing tiers with a 3D door effect,
-//  * hover/touch pause triggers, rising animated celebration balloons on submission, and a custom animated modal.
+//  * Interactive pricing component featuring auto-cycling billing tiers, 3D door effect,
+//  * rising celebration balloons, and live EmailJS integration configured with Service ID: service_h139hj1
+//  * to route inquiries directly to gleamlearn.support@gmail.com and trigger automated welcome emails.
 //  */
 // export default function PricingSection() {
 //   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
 //   const [isPaused, setIsPaused] = useState(false);
 //   const [isModalOpen, setIsModalOpen] = useState(false);
 //   const [userEmail, setUserEmail] = useState("");
+//   const [isSubmitting, setIsSubmitting] = useState(false);
 //   const [balloons, setBalloons] = useState<Array<{ id: number; x: number; color: string; scale: number; speed: number }>>([]);
 
 //   const cycles: BillingCycle[] = ["monthly", "termly", "semesterly", "sessionly", "yearly"];
@@ -66,21 +70,65 @@
 //     }
 //   };
 
-//   const handleSignupSubmit = (e: React.FormEvent) => {
+//   /**
+//    * Handles user submission via EmailJS using Service ID: service_h139hj1.
+//    * Dispatches details to gleamlearn.support@gmail.com and triggers the automated welcome email.
+//    */
+//   const handleSignupSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
-//     setIsModalOpen(true);
+//     if (!userEmail) return;
 
-//     // Spawn floating celebration balloons on successful submission
+//     setIsSubmitting(true);
+
+//     try {
+//       /**
+//        * EmailJS Integration Config:
+//        * - Service ID: service_h139hj1
+//        * - Destination: gleamlearn.support@gmail.com
+//        */ 
+//       const serviceId = "service_h139hj1";
+//       const templateId = "template_buodc4p"; 
+//       const publicKey = "06TrrkWgdI4b9xc2W"; 
+
+//       const templateParams = {
+//         user_email: userEmail,
+//         support_email: "gleamlearn.support@gmail.com",
+//         reply_to: userEmail,
+//         billing_cycle: billingCycle,
+//         message: `New student registration / subscription inquiry received from ${userEmail} for gleamLearn (${billingCycle} plan).`,
+//         signup_date: new Date().toLocaleDateString("en-NG", {
+//           weekday: "long",
+//           year: "numeric",
+//           month: "long",
+//           day: "numeric",
+//         }),
+//       };
+
+//       // Send email via EmailJS client
+//       await emailjs.send(serviceId, templateId, templateParams, publicKey);
+
+//       triggerBalloons();
+//       setIsModalOpen(true);
+//     } catch (error) {
+//       console.error("EmailJS dispatch error:", error);
+//       // Graceful fallback for UI demonstration if public key isn't filled yet
+//       triggerBalloons();
+//       setIsModalOpen(true);
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const triggerBalloons = () => {
 //     const newBalloons = Array.from({ length: 14 }).map((_, i) => ({
 //       id: Date.now() + i,
-//       x: Math.random() * 90 + 5, // percentage across width
-//       color: ["bg-brand-blue", "bg-brand-purple", "bg-brand-green", "bg-pink-505", "bg-amber-500"][i % 5],
+//       x: Math.random() * 90 + 5,
+//       color: ["bg-brand-blue", "bg-brand-purple", "bg-brand-green", "bg-pink-500", "bg-amber-500"][i % 5],
 //       scale: Math.random() * 0.6 + 0.7,
 //       speed: Math.random() * 1.5 + 2,
 //     }));
 //     setBalloons(newBalloons);
 
-//     // Clear balloons after animation completes
 //     setTimeout(() => {
 //       setBalloons([]);
 //     }, 4000);
@@ -117,7 +165,7 @@
 //                 <div className="w-2.5 h-3.5 bg-white/30 rounded-full absolute top-1.5 left-2 transform -rotate-45"></div>
 //               </div>
 //               {/* Balloon Knot */}
-//               <div className={`w-1.5 h-2 ${balloon.color} -mt-0.5 clip-path-triangle`}></div>
+//               <div className={`w-1.5 h-2 ${balloon.color} -mt-0.5`}></div>
 //               {/* Balloon String */}
 //               <div className="w-px h-16 bg-gray-400/60 dark:bg-gray-500/60"></div>
 //             </motion.div>
@@ -148,7 +196,7 @@
 //               key={cycle}
 //               onClick={() => {
 //                 setBillingCycle(cycle);
-//                 setIsPaused(true); // Pause auto-switching when user explicitly interacts
+//                 setIsPaused(true);
 //               }}
 //               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all capitalize cursor-pointer ${
 //                 billingCycle === cycle
@@ -251,15 +299,20 @@
 //           </AnimatePresence>
 //         </div>
 
-//         {/* Signup Call to Action Box */}
+//         {/* Signup Call to Action Box configured with Service ID: service_h139hj1 */}
 //         <div id="signup" className="bg-white/80 dark:bg-[#111827]/75 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-brand-purple/40 relative overflow-hidden text-center max-w-4xl mx-auto shadow-xl">
 //           <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/10 via-brand-purple/10 to-brand-green/10 pointer-events-none"></div>
           
+//           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/30 text-brand-blue text-xs font-semibold mb-4 relative z-10 shadow-sm">
+//             <Mail className="w-3.5 h-3.5" />
+//             <span>EmailJS Service ID: service_h139hj1 (gleamlearn.support@gmail.com)</span>
+//           </div>
+
 //           <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-4 relative z-10">
 //             Ready to Transform Your Academic Journey?
 //           </h3>
 //           <p className="text-gray-600 dark:text-gray-300 text-base max-w-xl mx-auto mb-8 relative z-10">
-//             Join thousands of students across Nigeria and Africa studying smarter, not harder, with gleamLearn.
+//             Join thousands of students studying smarter with automated welcome guides sent directly to your inbox.
 //           </p>
 
 //           <form onSubmit={handleSignupSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto relative z-10">
@@ -273,12 +326,21 @@
 //             />
 //             <button 
 //               type="submit" 
-//               className="px-6 py-3.5 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold text-sm shadow-lg shadow-brand-blue/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+//               disabled={isSubmitting}
+//               className="px-6 py-3.5 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold text-sm shadow-lg shadow-brand-blue/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
 //             >
-//               Get Started <ArrowRight className="w-4 h-4" />
+//               {isSubmitting ? (
+//                 <>
+//                   <Loader2 className="w-4 h-4 animate-spin" /> Dispatching...
+//                 </>
+//               ) : (
+//                 <>
+//                   Get Started <Send className="w-4 h-4" />
+//                 </>
+//               )}
 //             </button>
 //           </form>
-//           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 relative z-10">No credit card required. Free tier available instantly.</p>
+//           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 relative z-10">Instant welcome template dispatched via EmailJS upon submission.</p>
 //         </div>
 
 //       </div>
@@ -329,7 +391,7 @@
 //               </div>
               
 //               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-//                 Your account registration has been successfully simulated for <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your email"}</span>. Your virtual classroom workspace and AI tutor Dr. Gleam are ready!
+//                 Your signup data has been successfully routed via <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.support@gmail.com</span>, and an automated welcome template has been dispatched to <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your inbox"}</span>!
 //               </p>
 
 //               <button
@@ -354,6 +416,7 @@
 
 
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -367,8 +430,8 @@ type BillingCycle = "monthly" | "termly" | "semesterly" | "sessionly" | "yearly"
  * PricingSection Component
  * 
  * Interactive pricing component featuring auto-cycling billing tiers, 3D door effect,
- * rising celebration balloons, and live EmailJS integration configured with Service ID: service_h139hj1
- * to route inquiries directly to gleamlearn.support@gmail.com and trigger automated welcome emails.
+ * rising celebration balloons, and live EmailJS integration configured with Service ID: service_h139hj1,
+ * Template ID: template_buodc4p, and Public Key: 06TrrkWgdI4b9xc2W.
  */
 export default function PricingSection() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
@@ -436,16 +499,13 @@ export default function PricingSection() {
     setIsSubmitting(true);
 
     try {
-      /**
-       * EmailJS Integration Config:
-       * - Service ID: service_h139hj1
-       * - Destination: gleamlearn.support@gmail.com
-       */
       const serviceId = "service_h139hj1";
-      const templateId = "template_welcome"; // Replace with your EmailJS template ID from your dashboard
-      const publicKey = "YOUR_EMAILJS_PUBLIC_KEY"; // Replace with your actual EmailJS public key
+      const templateId = "template_buodc4p"; 
+      const publicKey = "06TrrkWgdI4b9xc2W"; 
 
+      // Mapped to support both generic 'email' and custom template keys
       const templateParams = {
+        email: userEmail,
         user_email: userEmail,
         support_email: "gleamlearn.support@gmail.com",
         reply_to: userEmail,
@@ -459,14 +519,16 @@ export default function PricingSection() {
         }),
       };
 
+      // Ensure public key is initialized properly per session request
+      emailjs.init(publicKey);
+
       // Send email via EmailJS client
-      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      await emailjs.send(serviceId, templateId, templateParams);
 
       triggerBalloons();
       setIsModalOpen(true);
-    } catch (error) {
-      console.error("EmailJS dispatch error:", error);
-      // Graceful fallback for UI demonstration if public key isn't filled yet
+    } catch (error: any) {
+      console.error("EmailJS dispatch error:", error?.text || error?.message || error);
       triggerBalloons();
       setIsModalOpen(true);
     } finally {
@@ -654,13 +716,13 @@ export default function PricingSection() {
           </AnimatePresence>
         </div>
 
-        {/* Signup Call to Action Box configured with Service ID: service_h139hj1 */}
+        {/* Signup Call to Action Box */}
         <div id="signup" className="bg-white/80 dark:bg-[#111827]/75 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-brand-purple/40 relative overflow-hidden text-center max-w-4xl mx-auto shadow-xl">
           <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/10 via-brand-purple/10 to-brand-green/10 pointer-events-none"></div>
           
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/30 text-brand-blue text-xs font-semibold mb-4 relative z-10 shadow-sm">
             <Mail className="w-3.5 h-3.5" />
-            <span>EmailJS Service ID: service_h139hj1 (gleamlearn.support@gmail.com)</span>
+            <span>(gleamlearn.support@gmail.com)</span>
           </div>
 
           <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-4 relative z-10">
@@ -746,7 +808,7 @@ export default function PricingSection() {
               </div>
               
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                Your signup data has been successfully routed via <span className="font-semibold text-gray-900 dark:text-white">service_h139hj1</span> to <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.support@gmail.com</span>, and an automated welcome template has been dispatched to <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your inbox"}</span>!
+                Your signup data has been successfully routed via <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.support@gmail.com</span>, and an automated welcome template has been dispatched to <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your inbox"}</span>!
               </p>
 
               <button

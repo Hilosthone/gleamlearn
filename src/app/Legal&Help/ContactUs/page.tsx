@@ -1,27 +1,76 @@
+
 // "use client";
 
 // import React, { useState } from "react";
 // import { motion } from "framer-motion";
-// import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
+// import { Mail, Phone, MapPin, Send, CheckCircle2, Loader2 } from "lucide-react";
+// import emailjs from "@emailjs/browser";
 
 // /**
 //  * ContactUs Component
 //  * 
 //  * Interactive contact page featuring company communication channels,
-//  * direct support emails, and an inquiry form with success confirmation.
+//  * direct support emails, and a live inquiry form wired to EmailJS (Service ID: service_h139hj1).
 //  */
 // export default function ContactUs() {
 //   const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });
 //   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+//   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-//   const handleContactSubmit = (e: React.FormEvent) => {
+//   /**
+//    * Handles contact form submission via EmailJS
+//    * Routes messages directly to gleamlearn.support@gmail.com using service_h139hj1
+//    */
+//   const handleContactSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
 //     if (!contactForm.name || !contactForm.email || !contactForm.message) return;
-//     setIsSubmitted(true);
-//     setTimeout(() => {
-//       setIsSubmitted(false);
-//       setContactForm({ name: "", email: "", subject: "", message: "" });
-//     }, 4000);
+
+//     setIsSubmitting(true);
+
+//     try {
+//       /**
+//        * EmailJS Configuration Parameters:
+//        * - Service ID: service_h139hj1
+//        * - Recipient: gleamlearn.support@gmail.com
+//        */
+//       const serviceId = "service_h139hj1";
+//       const templateId = "template_contact"; // Replace with your EmailJS template ID for contact inquiries
+//       const publicKey = "YOUR_EMAILJS_PUBLIC_KEY"; // Replace with your actual EmailJS public key
+
+//       const templateParams = {
+//         from_name: contactForm.name,
+//         from_email: contactForm.email,
+//         support_email: "gleamlearn.support@gmail.com",
+//         subject: contactForm.subject || "General Inquiry",
+//         message: contactForm.message,
+//         reply_to: contactForm.email,
+//         submission_date: new Date().toLocaleDateString("en-NG", {
+//           weekday: "long",
+//           year: "numeric",
+//           month: "long",
+//           day: "numeric",
+//         }),
+//       };
+
+//       // Dispatch email via EmailJS client
+//       await emailjs.send(serviceId, templateId, templateParams, publicKey);
+
+//       setIsSubmitted(true);
+//       setTimeout(() => {
+//         setIsSubmitted(false);
+//         setContactForm({ name: "", email: "", subject: "", message: "" });
+//       }, 5000);
+//     } catch (error) {
+//       console.error("EmailJS contact dispatch error:", error);
+//       // Graceful fallback simulation if public key isn't wired yet
+//       setIsSubmitted(true);
+//       setTimeout(() => {
+//         setIsSubmitted(false);
+//         setContactForm({ name: "", email: "", subject: "", message: "" });
+//       }, 5000);
+//     } finally {
+//       setIsSubmitting(false);
+//     }
 //   };
 
 //   return (
@@ -32,13 +81,13 @@
 //         <div className="text-center max-w-2xl mx-auto mb-16">
 //           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/30 text-brand-blue text-xs font-semibold mb-4 shadow-sm">
 //             <Mail className="w-3.5 h-3.5" />
-//             <span>Get in Touch</span>
+//             <span>Get in Touch • Service ID: service_h139hj1</span>
 //           </div>
 //           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
 //             Contact Us
 //           </h2>
 //           <p className="text-gray-600 dark:text-gray-400 text-sm">
-//             Have questions about institutional licenses, technical integrations, or custom AI models? Our team is ready to assist.
+//             Have questions about institutional licenses, technical integrations, or custom AI models? Our team at gleamLearn is ready to assist.
 //           </p>
 //         </div>
 
@@ -53,7 +102,7 @@
 //             <div className="space-y-2">
 //               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reach Our Specialists</h3>
 //               <p className="text-sm text-gray-600 dark:text-gray-400">
-//                 We respond to all institutional and technical inquiries within 24 hours.
+//                 We respond to all institutional and technical inquiries sent to <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.support@gmail.com</span> within 24 hours.
 //               </p>
 //             </div>
 
@@ -95,8 +144,8 @@
 //             {isSubmitted && (
 //               <div className="absolute inset-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center text-center p-6 z-20 space-y-3">
 //                 <CheckCircle2 className="w-12 h-12 text-brand-green animate-bounce" />
-//                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">Message Sent Successfully!</h4>
-//                 <p className="text-xs text-gray-600 dark:text-gray-400">Thank you for reaching out. A gleamLearn specialist will respond shortly.</p>
+//                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">Message Dispatched!</h4>
+//                 <p className="text-xs text-gray-600 dark:text-gray-400">Your inquiry has been successfully routed via <span className="font-semibold">gleamlearn.support@gmail.com</span>.</p>
 //               </div>
 //             )}
 
@@ -151,9 +200,18 @@
 
 //               <button
 //                 type="submit"
-//                 className="w-full py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/20 cursor-pointer"
+//                 disabled={isSubmitting}
+//                 className="w-full py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/20 cursor-pointer disabled:opacity-70"
 //               >
-//                 <Send className="w-4 h-4" /> Send Message
+//                 {isSubmitting ? (
+//                   <>
+//                     <Loader2 className="w-4 h-4 animate-spin" /> Sending to gleamlearn.support@gmail.com...
+//                   </>
+//                 ) : (
+//                   <>
+//                     <Send className="w-4 h-4" /> Send Message
+//                   </>
+//                 )}
 //               </button>
 //             </form>
 //           </div>
@@ -177,7 +235,7 @@ import emailjs from "@emailjs/browser";
  * ContactUs Component
  * 
  * Interactive contact page featuring company communication channels,
- * direct support emails, and a live inquiry form wired to EmailJS (Service ID: service_h139hj1).
+ * direct support emails, and a live inquiry form wired to EmailJS.
  */
 export default function ContactUs() {
   const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });
@@ -186,7 +244,7 @@ export default function ContactUs() {
 
   /**
    * Handles contact form submission via EmailJS
-   * Routes messages directly to gleamlearn.support@gmail.com using service_h139hj1
+   * Routes messages directly to gleamlearn.support@gmail.com securely.
    */
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,23 +253,18 @@ export default function ContactUs() {
     setIsSubmitting(true);
 
     try {
-      /**
-       * EmailJS Configuration Parameters:
-       * - Service ID: service_h139hj1
-       * - Recipient: gleamlearn.support@gmail.com
-       */
       const serviceId = "service_h139hj1";
-      const templateId = "template_contact"; // Replace with your EmailJS template ID for contact inquiries
-      const publicKey = "YOUR_EMAILJS_PUBLIC_KEY"; // Replace with your actual EmailJS public key
+      // Template ID updated to your active verified contact template ("template_1c74lgc")
+      const templateId = "template_1c74lgc"; 
+      const publicKey = "06TrrkWgdI4b9xc2W"; 
 
+      // Payload parameters mapped precisely to match your EmailJS HTML template variables
       const templateParams = {
-        from_name: contactForm.name,
-        from_email: contactForm.email,
-        support_email: "gleamlearn.support@gmail.com",
+        name: contactForm.name,
         subject: contactForm.subject || "General Inquiry",
+        email: contactForm.email,
         message: contactForm.message,
-        reply_to: contactForm.email,
-        submission_date: new Date().toLocaleDateString("en-NG", {
+        time: new Date().toLocaleDateString("en-NG", {
           weekday: "long",
           year: "numeric",
           month: "long",
@@ -219,22 +272,19 @@ export default function ContactUs() {
         }),
       };
 
+      // Initialize EmailJS client with your public key
+      emailjs.init(publicKey);
+
       // Dispatch email via EmailJS client
-      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      await emailjs.send(serviceId, templateId, templateParams);
 
       setIsSubmitted(true);
       setTimeout(() => {
         setIsSubmitted(false);
         setContactForm({ name: "", email: "", subject: "", message: "" });
       }, 5000);
-    } catch (error) {
-      console.error("EmailJS contact dispatch error:", error);
-      // Graceful fallback simulation if public key isn't wired yet
-      setIsSubmitted(true);
-      setTimeout(() => {
-        setIsSubmitted(false);
-        setContactForm({ name: "", email: "", subject: "", message: "" });
-      }, 5000);
+    } catch (error: any) {
+      console.error("EmailJS contact dispatch error:", error?.text || error?.message || error);
     } finally {
       setIsSubmitting(false);
     }
@@ -248,7 +298,7 @@ export default function ContactUs() {
         <div className="text-center max-w-2xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/30 text-brand-blue text-xs font-semibold mb-4 shadow-sm">
             <Mail className="w-3.5 h-3.5" />
-            <span>Get in Touch • Service ID: service_h139hj1</span>
+            <span>Get in Touch</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
             Contact Us
@@ -312,7 +362,7 @@ export default function ContactUs() {
               <div className="absolute inset-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center text-center p-6 z-20 space-y-3">
                 <CheckCircle2 className="w-12 h-12 text-brand-green animate-bounce" />
                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">Message Dispatched!</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Your inquiry has been successfully routed via <span className="font-semibold">service_h139hj1</span> to <span className="font-semibold">gleamlearn.support@gmail.com</span>.</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Your inquiry has been successfully routed via <span className="font-semibold">gleamlearn.support@gmail.com</span>.</p>
               </div>
             )}
 
