@@ -64,7 +64,7 @@ export default function ContactUs() {
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block">Email Support</span>
-                  <strong className="text-gray-900 dark:text-white">support@gleamlearn.ai</strong>
+                  <strong className="text-gray-900 dark:text-white">gleamlearn.support@gmail.com</strong>
                 </div>
               </div>
 
@@ -74,7 +74,7 @@ export default function ContactUs() {
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block">Direct Line</span>
-                  <strong className="text-gray-900 dark:text-white">+234 905 177 2499</strong>
+                  <strong className="text-gray-900 dark:text-white">+234 703 047 6288</strong>
                 </div>
               </div>
 

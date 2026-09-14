@@ -170,12 +170,12 @@ export default function PrivacyPolicy() {
                   Have privacy questions or data requests?
                 </h4>
                 <p className="text-xs text-blue-800/80 dark:text-blue-400">
-                  Reach out directly to our data protection officer at support@gleamlearn.ai
+                  Reach out directly to our data protection officer at gleamlearn.support@gmail.com
                 </p>
               </div>
             </div>
             <a 
-              href="mailto:support@gleamlearn.ai" 
+              href="mailto:gleamlearn.support@gmail.com" 
               className="px-4 py-2 rounded-xl bg-brand-blue text-white text-xs font-semibold hover:bg-brand-blue/90 transition-colors shadow-sm shrink-0"
             >
               Contact DPO
