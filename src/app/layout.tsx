@@ -68,12 +68,16 @@ export const metadata: Metadata = {
   title: "gleamLearn — AI-Powered Personalized Learning, Practice & Examination Platform",
   description: "Transform your study materials into structured notes, quizzes, flashcards, and personalized AI tutoring sessions.",
   
-  // The 'icons' property maps the logo file directly to the browser's tab favicon.
-  // Next.js automatically reads this and injects the corresponding <link rel="icon"...> tags into the HTML head.
+  // Browser tab favicon configuration
   icons: {
     icon: "/gleamlearn-logo.jpg",
     shortcut: "/gleamlearn-logo.jpg",
     apple: "/gleamlearn-logo.jpg",
+  },
+
+  // Google Search Console verification meta tag
+  other: {
+    "google-site-verification": "ISFbZQQLhaje4yu2v2dhLZ3UXDaJPi-9tWW_IrG0ErU",
   },
 
   openGraph: {
@@ -83,7 +87,7 @@ export const metadata: Metadata = {
     siteName: "gleamLearn",
     images: [
       {
-        url: "/gleamlearn-logo.jpg", // Using public folder absolute path string
+        url: "/gleamlearn-logo.jpg",
         width: 1200,
         height: 630,
         alt: "gleamLearn Logo and Platform Preview",
@@ -106,7 +110,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Removed 'dark' class here so it defaults to light mode
     <html lang="en" className={`${jakarta.variable}`} suppressHydrationWarning>
       <body className="bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 antialiased selection:bg-brand-blue selection:text-white transition-colors duration-300">
         {children}
