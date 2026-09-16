@@ -56,7 +56,7 @@ export default function FooterSection() {
                 </svg>
               </a>
               {/* Mail Icon */}
-              <a href="mailto:gleamlearn.support@gmail.com" className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-brand-blue transition-all shadow-sm" aria-label="Email">
+              <a href="mailto:gleamlearn.ai@gmail.com" className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-brand-blue transition-all shadow-sm" aria-label="Email">
                 <Mail className="w-4 h-4" />
               </a>
             </div>

@@ -194,7 +194,7 @@ export default function SupportCenter() {
               </div>
             </div>
             <a 
-              href="mailto:gleamlearn.support@gmail.com"
+              href="mailto:gleamlearn.ai@gmail.com"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-blue text-white text-xs font-semibold hover:bg-brand-blue/90 transition-all shadow-sm shrink-0"
             >
               <span>Submit a Ticket</span>

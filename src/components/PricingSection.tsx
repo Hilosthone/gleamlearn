@@ -71,7 +71,7 @@ export default function PricingSection() {
 
   /**
    * Handles user submission via EmailJS using Service ID: service_h139hj1.
-   * Dispatches details to gleamlearn.support@gmail.com and triggers the automated welcome email.
+   * Dispatches details to gleamlearn.ai@gmail.com and triggers the automated welcome email.
    */
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,7 +303,7 @@ export default function PricingSection() {
           
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/30 text-brand-blue text-xs font-semibold mb-4 relative z-10 shadow-sm">
             <Mail className="w-3.5 h-3.5" />
-            <span>(gleamlearn.support@gmail.com)</span>
+            <span>(gleamlearn.ai@gmail.com)</span>
           </div>
 
           <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-4 relative z-10">
@@ -389,7 +389,7 @@ export default function PricingSection() {
               </div>
               
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                Your signup data has been successfully routed via <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.support@gmail.com</span>, and an automated welcome template has been dispatched to <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your inbox"}</span>!
+                Your signup data has been successfully routed via <span className="font-semibold text-gray-900 dark:text-white">gleamlearn.ai@gmail.com</span>, and an automated welcome template has been dispatched to <span className="font-semibold text-gray-900 dark:text-white">{userEmail || "your inbox"}</span>!
               </p>
 
               <button
