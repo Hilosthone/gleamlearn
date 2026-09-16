@@ -253,10 +253,10 @@ export default function ContactUs() {
     setIsSubmitting(true);
 
     try {
-      const serviceId = "service_h139hj1";
+      const serviceId = "service_kpkm79i";
       // Template ID updated to your active verified contact template ("template_1c74lgc")
-      const templateId = "template_1c74lgc"; 
-      const publicKey = "06TrrkWgdI4b9xc2W"; 
+      const templateId = "template_r960dva"; 
+      const publicKey = "gSPPRzbnN45WYiMOV"; 
 
       // Payload parameters mapped precisely to match your EmailJS HTML template variables
       const templateParams = {
