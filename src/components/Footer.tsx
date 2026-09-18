@@ -123,9 +123,6 @@ export default function FooterSection() {
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
           <p>© {new Date().getFullYear()} gleamLearn. All rights reserved.</p>
-          <p className="flex items-center gap-1.5">
-            Built with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> for students across Africa & beyond.
-          </p>
         </div>
 
       </div>
