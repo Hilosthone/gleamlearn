@@ -1,0 +1,44 @@
+// src/app/sitemap.ts
+import { MetadataRoute } from 'next';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = 'https://gleamlearn.vercel.app';
+
+  // 1. Define your static core pages
+  const staticPages = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 1.0, // Highest priority for your homepage
+    },
+    // Add other public pages you have, for example:
+    {
+      url: `${baseUrl}/auth/login`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/auth/signup`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    },
+  ];
+
+  // 2. (Optional) If you have dynamic routes like public courses, blogs, or study materials from a database:
+  // const courses = await getPublicCoursesFromDatabase();
+  // const dynamicCoursePages = courses.map((course) => ({
+  //   url: `${baseUrl}/courses/${course.slug}`,
+  //   lastModified: new Date(course.updatedAt),
+  //   changeFrequency: 'weekly' as const,
+  //   priority: 0.8,
+  // }));
+
+  // Return the combined array of all URLs
+  return [
+    ...staticPages,
+    // ...dynamicCoursePages
+  ];
+}
