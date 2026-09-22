@@ -1,3 +1,4 @@
+// //src/components/Navbar.tsx
 // "use client";
 
 // import React, { useState, useEffect } from "react";
@@ -6,17 +7,16 @@
 // import { BookOpen, Menu, X, ArrowRight, Sun, Moon, Sparkles, Bot } from "lucide-react";
 // import { motion, AnimatePresence } from "framer-motion";
 
-
 // export default function Navbar() {
 //   const [scrolled, setScrolled] = useState(false);
 //   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-//   const [darkMode, setDarkMode] = useState(true);
+//   const [darkMode, setDarkMode] = useState(false);
 
-//   // Initialize and toggle dark/light mode class on the document root
+//   // Initialize and toggle dark/light mode class on the document root (Default to light)
 //   useEffect(() => {
-//     const isDark = document.documentElement.classList.contains("dark") || 
-//                    localStorage.getItem("theme") === "dark" || 
-//                    (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches);
+//     const savedTheme = localStorage.getItem("theme");
+//     const isDark = savedTheme === "dark" || 
+//                    (!savedTheme && document.documentElement.classList.contains("dark"));
     
 //     setDarkMode(isDark);
 //     if (isDark) {
@@ -134,7 +134,7 @@
 //               </Link>
 //             </div>
 
-//             {/* Mobile & Tablet Right Controls: Theme Toggle & Hamburger Button (Visible on md, sm screens) */}
+//             {/* Mobile & Tablet Right Controls: Theme Toggle & Hamburger Button */}
 //             <div className="flex lg:hidden items-center gap-2">
 //               <button
 //                 onClick={toggleTheme}
@@ -158,7 +158,7 @@
 //         </motion.div>
 //       </header>
 
-//       {/* Animated Pro Sidebar & Backdrop Overlay for md, sm screens */}
+//       {/* Animated Pro Sidebar & Backdrop Overlay */}
 //       <AnimatePresence>
 //         {mobileMenuOpen && (
 //           <div className="fixed inset-0 z-50 flex lg:hidden">
@@ -285,8 +285,7 @@
 // }
 
 
-
-
+// src/components/Navbar.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -406,13 +405,13 @@ export default function Navbar() {
               </motion.button>
 
               <Link
-                href="#signup"
+                href="/auth/login"
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 transition-colors"
               >
                 Sign In
               </Link>
               <Link
-                href="#signup"
+                href="/splash"
                 className="relative group overflow-hidden rounded-xl p-[1px] font-semibold text-sm shadow-md shadow-brand-blue/20"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-brand-blue via-brand-purple to-brand-green animate-gradient-shift"></span>
@@ -548,14 +547,14 @@ export default function Navbar() {
               {/* Sidebar Footer Actions */}
               <div className="pt-6 border-t border-gray-200 dark:border-dark-border flex flex-col gap-3">
                 <Link
-                  href="#signup"
+                  href="/auth/login"
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full text-center py-3 rounded-xl bg-gray-100 dark:bg-dark-card text-gray-800 dark:text-white font-semibold border border-gray-200 dark:border-dark-border text-sm shadow-sm"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href="#signup"
+                  href="/splash"
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full text-center py-3.5 rounded-xl bg-brand-blue text-white font-bold shadow-lg shadow-brand-blue/30 text-sm flex items-center justify-center gap-2"
                 >
