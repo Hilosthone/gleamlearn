@@ -35,7 +35,7 @@ export default function ProfileSettingsHub() {
   const [userProfile, setUserProfile] = useState({
     fullName: 'Hilosthone Sulyman',
     username: 'hilosthone_dev',
-    institution: 'Obafemi Awolowo University',
+    institution: 'University Of Ilorin',
     department: 'Computer Science & Engineering',
     level: '400 Level',
     xp: '14,850 XP',
