@@ -4,20 +4,7 @@ import React, { useState } from 'react';
 import { 
   User, 
   Settings as SettingsIcon, 
-  Edit3, 
-  Award, 
-  Flame, 
-  Zap, 
-  Coins, 
-  GraduationCap, 
-  BookOpen, 
-  Shield, 
-  Bell, 
-  Moon, 
-  Sun, 
-  Volume2, 
-  Lock, 
-  Trash2, 
+  Edit3, Award, Flame, Zap, Coins, GraduationCap, BookOpen, Shield, Bell, Moon, Sun, Volume2, Lock, Trash2, 
   Sparkles, 
   Camera,
   CheckCircle2,
@@ -34,7 +21,7 @@ export default function ProfileSettingsHub() {
   // User Profile State
   const [userProfile, setUserProfile] = useState({
     fullName: 'Hilosthone Sulyman',
-    username: 'hilosthone_dev',
+    username: 'hilosthone',
     institution: 'University Of Ilorin',
     department: 'Computer Science & Engineering',
     level: '400 Level',
@@ -590,11 +577,9 @@ export default function ProfileSettingsHub() {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
