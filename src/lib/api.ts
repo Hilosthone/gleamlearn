@@ -1792,14 +1792,17 @@ export interface PastQuestionQueryParams {
   subject?: string;
   year?: number | string;
   topic?: string;
+  type?: string;     // e.g., "jamb", "waec"
+  limit?: number;    // e.g., pagination limit
   [key: string]: any;
 }
 
 export interface ExamPrepPayload {
   title?: string;
-  examinationId?: string;
-  targetDate?: string;
+  examType?: string; // e.g., "jamb"
   subjects?: string[];
+  targetDate?: string; // e.g., ISO date string
+  notes?: string;
   [key: string]: any;
 }
 
@@ -1830,7 +1833,7 @@ export const examinationBoardsApi = {
 export const pastQuestionsApi = {
   /**
    * GET /api/v1/past-questions
-   * Retrieve past questions with optional query filters (subject, year, topic).
+   * Retrieve past questions with optional query filters (subject, year, topic, type, limit).
    */
   getPastQuestions: (params?: PastQuestionQueryParams, token?: string) => {
     const queryParams = new URLSearchParams();
@@ -1850,14 +1853,14 @@ export const pastQuestionsApi = {
 
   /**
    * GET /api/v1/past-questions/years
-   * Retrieve a list of all distinct years available in the past questions repository.
+   * Retrieve a list of all distinct years available in the local repository.
    */
   getPastQuestionYears: (token?: string) => 
     apiRequest<any>('/past-questions/years', { method: 'GET', token }),
 
   /**
    * GET /api/v1/past-questions/subjects
-   * Retrieve a list of all distinct academic subjects available in the database.
+   * Retrieve a list of all distinct academic subjects available in the local database.
    */
   getPastQuestionSubjects: (token?: string) => 
     apiRequest<any>('/past-questions/subjects', { method: 'GET', token }),
@@ -1884,7 +1887,7 @@ export const pastQuestionsApi = {
 export const examPrepApi = {
   /**
    * POST /api/v1/exam-prep
-   * Create a personalized study schedule and target prep plan for an upcoming exam.
+   * Create a personalized study schedule and target prep plan for an upcoming examination.
    */
   createExamPrepPlan: (payload: ExamPrepPayload, token?: string) => 
     apiRequest<any>('/exam-prep', { method: 'POST', body: payload, token }),
@@ -2103,5 +2106,478 @@ export const masteryApi = {
    */
   getTopicMasteryById: (id: string, token?: string) => 
     apiRequest<any>(`/mastery/topics/${id}`, { method: 'GET', token }),
+};
+
+// ==========================================
+// STUDY GOALS TYPES
+// ==========================================
+
+export interface StudyGoalPayload {
+  title: string;
+  description?: string;
+  goalType?: string; // e.g., "course_completion"
+  targetValue?: number;
+  targetDate?: string; // e.g., "2026-12-31"
+  [key: string]: any;
+}
+
+// ==========================================
+// STUDY GOALS API ENDPOINTS
+// ==========================================
+
+export const goalsApi = {
+  /**
+   * GET /api/v1/goals
+   * Retrieve all personalized study goals and targets created by the user.
+   */
+  getAllGoals: (token?: string) => 
+    apiRequest<any>('/goals', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/goals
+   * Create a new study objective with custom targets, deadlines, and categories.
+   */
+  createGoal: (payload: StudyGoalPayload, token?: string) => 
+    apiRequest<any>('/goals', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/goals/{id}
+   * Get details of a specific study goal by ID.
+   */
+  getGoalById: (id: string, token?: string) => 
+    apiRequest<any>(`/goals/${id}`, { method: 'GET', token }),
+
+  /**
+   * PATCH /api/v1/goals/{id}
+   * Update an existing study goal's fields, targets, or descriptions.
+   */
+  updateGoal: (id: string, payload: Partial<StudyGoalPayload>, token?: string) => 
+    apiRequest<any>(`/goals/${id}`, { method: 'PATCH', body: payload, token }),
+
+  /**
+   * DELETE /api/v1/goals/{id}
+   * Permanently remove a study goal from the database.
+   */
+  deleteGoal: (id: string, token?: string) => 
+    apiRequest<any>(`/goals/${id}`, { method: 'DELETE', token }),
+
+  /**
+   * POST /api/v1/goals/{id}/complete
+   * Mark a study goal status as completed and sync final metrics.
+   */
+  completeGoal: (id: string, token?: string) => 
+    apiRequest<any>(`/goals/${id}/complete`, { method: 'POST', token }),
+
+  /**
+   * GET /api/v1/goals/{id}/progress
+   * Calculate exact completion percentage and status breakdown for a goal.
+   */
+  getGoalProgress: (id: string, token?: string) => 
+    apiRequest<any>(`/goals/${id}/progress`, { method: 'GET', token }),
+};
+
+// ==========================================
+// AI STUDY PLANNER TYPES
+// ==========================================
+
+export interface GeneratePlannerPayload {
+  targetId?: string;
+  deadline?: string; // e.g., "2026-12-15"
+  intensity?: 'light' | 'moderate' | 'intensive' | string;
+  [key: string]: any;
+}
+
+export interface UpdatePlannerItemPayload {
+  title?: string;
+  scheduledDate?: string; // e.g., "2026-09-20"
+  startTime?: string;     // e.g., "10:00 AM"
+  endTime?: string;       // e.g., "11:30 AM"
+  [key: string]: any;
+}
+
+// ==========================================
+// AI STUDY PLANNER API ENDPOINTS
+// ==========================================
+
+export const plannerApi = {
+  /**
+   * POST /api/v1/planner/generate
+   * Trigger AI scheduling engine to build a custom study roadmap based on deadlines and subjects.
+   */
+  generatePlanner: (payload: GeneratePlannerPayload, token?: string) => 
+    apiRequest<any>('/planner/generate', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/planner
+   * Fetch the complete study schedule timeline for the authenticated user.
+   */
+  getAllPlannerSessions: (token?: string) => 
+    apiRequest<any>('/planner', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/planner/today
+   * Fetch all scheduled study sessions and tasks assigned for the current day.
+   */
+  getTodayAgenda: (token?: string) => 
+    apiRequest<any>('/planner/today', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/planner/week
+   * Fetch study sessions scheduled for the current week.
+   */
+  getWeeklySchedule: (token?: string) => 
+    apiRequest<any>('/planner/week', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/planner/month
+   * Fetch study sessions scheduled across the current month.
+   */
+  getMonthlySchedule: (token?: string) => 
+    apiRequest<any>('/planner/month', { method: 'GET', token }),
+
+  /**
+   * PATCH /api/v1/planner/{id}
+   * Modify specific properties, times, or dates of a scheduled study task.
+   */
+  updatePlannerItem: (id: string, payload: Partial<UpdatePlannerItemPayload>, token?: string) => 
+    apiRequest<any>(`/planner/${id}`, { method: 'PATCH', body: payload, token }),
+
+  /**
+   * POST /api/v1/planner/{id}/complete
+   * Update a planner task status to completed and record learning milestone achievement.
+   */
+  completePlannerSession: (id: string, token?: string) => 
+    apiRequest<any>(`/planner/${id}/complete`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/planner/{id}/skip
+   * Flag a scheduled session as skipped so the AI planner can take it into account.
+   */
+  skipPlannerSession: (id: string, token?: string) => 
+    apiRequest<any>(`/planner/${id}/skip`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/planner/regenerate
+   * Analyze missed or skipped sessions and dynamically rebuild/redistribute the remaining schedule.
+   */
+  regeneratePlanner: (token?: string) => 
+    apiRequest<any>('/planner/regenerate', { method: 'POST', token }),
+};
+
+// ==========================================
+// STUDY SESSIONS TYPES
+// ==========================================
+
+export interface StartStudySessionPayload {
+  title: string;
+  courseId?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// STUDY SESSIONS API ENDPOINTS
+// ==========================================
+
+export const studySessionsApi = {
+  /**
+   * POST /api/v1/study-sessions/start
+   * Initializes a live proctored or tracked study session timer for the student.
+   */
+  startStudySession: (payload: StartStudySessionPayload, token?: string) => 
+    apiRequest<any>('/study-sessions/start', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/study-sessions/{id}/pause
+   * Pauses the timing accumulator for an active study session.
+   */
+  pauseStudySession: (id: string, token?: string) => 
+    apiRequest<any>(`/study-sessions/${id}/pause`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/study-sessions/{id}/resume
+   * Resumes tracking time for a paused study session.
+   */
+  resumeStudySession: (id: string, token?: string) => 
+    apiRequest<any>(`/study-sessions/${id}/resume`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/study-sessions/{id}/complete
+   * Finalizes a study session, calculates total accumulated duration, and records metrics.
+   */
+  completeStudySession: (id: string, token?: string) => 
+    apiRequest<any>(`/study-sessions/${id}/complete`, { method: 'POST', token }),
+
+  /**
+   * GET /api/v1/study-sessions
+   * Fetches the complete history of all sessions (active, paused, completed) for the user.
+   */
+  getAllStudySessions: (token?: string) => 
+    apiRequest<any>('/study-sessions', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/study-sessions/today
+   * Fetches all sessions logged for the current day alongside daily aggregate study duration.
+   */
+  getTodayStudySessions: (token?: string) => 
+    apiRequest<any>('/study-sessions/today', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/study-sessions/history
+   * Retrieves chronological records of all successfully completed study sessions.
+   */
+  getStudySessionHistory: (token?: string) => 
+    apiRequest<any>('/study-sessions/history', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/study-sessions/stats
+   * Calculates aggregate metrics including total completed sessions and total study hours.
+   */
+  getStudySessionStats: (token?: string) => 
+    apiRequest<any>('/study-sessions/stats', { method: 'GET', token }),
+};
+
+// ==========================================
+// STREAKS TYPES
+// ==========================================
+
+export interface StreakCheckInPayload {
+  activitySource?: string; // e.g., "study_session"
+  [key: string]: any;
+}
+
+export interface StreakRecoverPayload {
+  recoveryMethod?: string; // e.g., "standard_token"
+  [key: string]: any;
+}
+
+// ==========================================
+// STREAKS API ENDPOINTS
+// ==========================================
+
+export const streaksApi = {
+  /**
+   * GET /api/v1/streak
+   * Get current streak summary (streak count, longest streak, recovery tokens, check-in status).
+   */
+  getStreakSummary: (token?: string) => 
+    apiRequest<any>('/streak', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/streak/history
+   * Get chronological check-in logs for engagement analysis.
+   */
+  getStreakHistory: (token?: string) => 
+    apiRequest<any>('/streak/history', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/streak/calendar
+   * Get calendar check-in map (array of check-in dates for grid UI widgets).
+   */
+  getStreakCalendar: (token?: string) => 
+    apiRequest<any>('/streak/calendar', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/streak/check-in
+   * Perform daily streak check-in to register activity and increment counters.
+   */
+  checkInStreak: (payload?: StreakCheckInPayload, token?: string) => 
+    apiRequest<any>('/streak/check-in', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/streak/recovery
+   * Check streak recovery availability (inspects available recovery tokens).
+   */
+  checkRecoveryAvailability: (token?: string) => 
+    apiRequest<any>('/streak/recovery', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/streak/recover
+   * Recover a broken streak by consuming a recovery token.
+   */
+  recoverStreak: (payload?: StreakRecoverPayload, token?: string) => 
+    apiRequest<any>('/streak/recover', { method: 'POST', body: payload, token }),
+};
+
+// ==========================================
+// LEVELS, ACHIEVEMENTS & BADGES TYPES
+// ==========================================
+
+export interface AchievementItem {
+  id: string;
+  title: string;
+  description: string;
+  category?: string;
+  [key: string]: any;
+}
+
+export interface BadgeItem {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  criteria?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// LEVELS & RANKS API ENDPOINTS
+// ==========================================
+
+export const levelsApi = {
+  /**
+   * GET /api/v1/levels
+   * Get all system levels and progression configuration.
+   */
+  getAllLevels: (token?: string) => 
+    apiRequest<any>('/levels', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/levels/me
+   * Get current authenticated user level and XP progress.
+   */
+  getMyLevel: (token?: string) => 
+    apiRequest<any>('/levels/me', { method: 'GET', token }),
+};
+
+// ==========================================
+// ACHIEVEMENTS API ENDPOINTS
+// ==========================================
+
+export const achievementsApi = {
+  /**
+   * GET /api/v1/achievements
+   * Get global achievements catalog.
+   */
+  getAllAchievements: (token?: string) => 
+    apiRequest<any>('/achievements', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/achievements/me
+   * Get authenticated user unlocked achievements.
+   */
+  getMyAchievements: (token?: string) => 
+    apiRequest<any>('/achievements/me', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/achievements/{id}
+   * Get specific achievement details by unique ID.
+   */
+  getAchievementById: (id: string, token?: string) => 
+    apiRequest<any>(`/achievements/${id}`, { method: 'GET', token }),
+};
+
+// ==========================================
+// BADGES API ENDPOINTS
+// ==========================================
+
+export const badgesApi = {
+  /**
+   * GET /api/v1/badges
+   * Get all system available badges catalog.
+   */
+  getAllBadges: (token?: string) => 
+    apiRequest<any>('/badges', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/badges/me
+   * Get authenticated user unlocked badges.
+   */
+  getMyBadges: (token?: string) => 
+    apiRequest<any>('/badges/me', { method: 'GET', token }),
+};
+
+// ==========================================
+// LEADERBOARDS TYPES
+// ==========================================
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  totalXp: number;
+  [key: string]: any;
+}
+
+export interface LeaderboardResponse {
+  status: string;
+  scope?: string;
+  filterValue?: string;
+  leaderboard: LeaderboardEntry[];
+  [key: string]: any;
+}
+
+// ==========================================
+// LEADERBOARDS API ENDPOINTS
+// ==========================================
+
+export const leaderboardsApi = {
+  /**
+   * GET /api/v1/leaderboards/global
+   * Get global XP leaderboard standings.
+   */
+  getGlobalLeaderboard: (token?: string) => 
+    apiRequest<LeaderboardResponse>('/leaderboards/global', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/country
+   * Get country-specific leaderboard standings.
+   */
+  getCountryLeaderboard: (countryName: string, token?: string) => 
+    apiRequest<LeaderboardResponse>(`/leaderboards/country?name=${encodeURIComponent(countryName)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/school
+   * Get school-specific leaderboard standings.
+   */
+  getSchoolLeaderboard: (schoolName: string, token?: string) => 
+    apiRequest<LeaderboardResponse>(`/leaderboards/school?name=${encodeURIComponent(schoolName)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/university
+   * Get university-specific leaderboard standings.
+   */
+  getUniversityLeaderboard: (universityName: string, token?: string) => 
+    apiRequest<LeaderboardResponse>(`/leaderboards/university?name=${encodeURIComponent(universityName)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/department
+   * Get department-specific leaderboard standings.
+   */
+  getDepartmentLeaderboard: (departmentName: string, token?: string) => 
+    apiRequest<LeaderboardResponse>(`/leaderboards/department?name=${encodeURIComponent(departmentName)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/course
+   * Get course-specific leaderboard standings.
+   */
+  getCourseLeaderboard: (courseId: string, token?: string) => 
+    apiRequest<LeaderboardResponse>(`/leaderboards/course?courseId=${encodeURIComponent(courseId)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/friends
+   * Get friends network leaderboard standings.
+   */
+  getFriendsLeaderboard: (token?: string) => 
+    apiRequest<LeaderboardResponse>('/leaderboards/friends', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/weekly
+   * Get weekly XP leaderboard standings.
+   */
+  getWeeklyLeaderboard: (token?: string) => 
+    apiRequest<LeaderboardResponse>('/leaderboards/weekly', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/monthly
+   * Get monthly XP leaderboard standings.
+   */
+  getMonthlyLeaderboard: (token?: string) => 
+    apiRequest<LeaderboardResponse>('/leaderboards/monthly', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/leaderboards/me
+   * Get authenticated user current rank and standing across the platform.
+   */
+  getMyRank: (token?: string) => 
+    apiRequest<any>('/leaderboards/me', { method: 'GET', token }),
 };
 
