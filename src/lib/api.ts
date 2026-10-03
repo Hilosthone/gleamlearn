@@ -853,6 +853,72 @@ export const filesApi = {
 };
 
 // ==========================================
+// YOUTUBE LEARNING MATERIAL TYPES
+// ==========================================
+
+export interface YouTubeSubmitPayload {
+  url: string;
+  title?: string;
+  courseId?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// YOUTUBE LEARNING MATERIAL API ENDPOINTS
+// ==========================================
+
+export const youtubeLearningApi = {
+  /**
+   * POST /api/v1/youtube
+   * Submit a YouTube video URL for the learning pipeline conversion.
+   */
+  submitYouTubeVideo: (payload: YouTubeSubmitPayload, token?: string) => 
+    apiRequest<any>('/youtube', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/youtube
+   * Get all YouTube learning resources submitted by the user.
+   */
+  getAllYouTubeResources: (token?: string) => 
+    apiRequest<any>('/youtube', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/youtube/{id}
+   * Get details and structured learning material of a specific YouTube resource.
+   */
+  getYouTubeResourceById: (id: string, token?: string) => 
+    apiRequest<any>(`/youtube/${id}`, { method: 'GET', token }),
+
+  /**
+   * DELETE /api/v1/youtube/{id}
+   * Delete a submitted YouTube resource permanently.
+   */
+  deleteYouTubeResource: (id: string, token?: string) => 
+    apiRequest<any>(`/youtube/${id}`, { method: 'DELETE', token }),
+
+  /**
+   * GET /api/v1/youtube/{id}/status
+   * Check the pipeline processing status of a submitted YouTube resource.
+   */
+  getYouTubeProcessingStatus: (id: string, token?: string) => 
+    apiRequest<any>(`/youtube/${id}/status`, { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/youtube/{id}/process
+   * Trigger transcription and AI structuring for a submitted YouTube video.
+   */
+  processYouTubeVideo: (id: string, token?: string) => 
+    apiRequest<any>(`/youtube/${id}/process`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/youtube/{id}/reprocess
+   * Reprocess a failed or outdated YouTube learning resource.
+   */
+  reprocessYouTubeVideo: (id: string, token?: string) => 
+    apiRequest<any>(`/youtube/${id}/reprocess`, { method: 'POST', token }),
+};
+
+// ==========================================
 // AI DOCUMENT PROCESSING TYPES
 // ==========================================
 
@@ -2581,3 +2647,801 @@ export const leaderboardsApi = {
     apiRequest<any>('/leaderboards/me', { method: 'GET', token }),
 };
 
+// ==========================================
+// PERSONAL AI ASSISTANT TYPES
+// ==========================================
+
+export interface AiChatMessagePayload {
+  message: string;
+  conversationId?: string;
+  [key: string]: any;
+}
+
+export interface AiToolContentPayload {
+  input: string;
+  context?: {
+    subject?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+export interface AiEvaluationPayload {
+  question: string;
+  userAnswer: string;
+  correctAnswer: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// PERSONAL AI ASSISTANT API ENDPOINTS
+// ==========================================
+
+export const aiAssistantApi = {
+  /**
+   * POST /api/v1/ai/chat
+   * Send a message to the AI chat assistant within a conversation thread.
+   */
+  sendChatMessage: (payload: AiChatMessagePayload, token?: string) => 
+    apiRequest<any>('/ai/chat', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/ai/conversations
+   * List all user AI conversation threads.
+   */
+  getAllConversations: (token?: string) => 
+    apiRequest<any>('/ai/conversations', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/ai/conversations
+   * Create a new AI conversation session.
+   */
+  createConversation: (token?: string) => 
+    apiRequest<any>('/ai/conversations', { method: 'POST', token }),
+
+  /**
+   * GET /api/v1/ai/conversations/{id}
+   * Get a specific conversation thread by ID along with its history.
+   */
+  getConversationById: (id: string, token?: string) => 
+    apiRequest<any>(`/ai/conversations/${id}`, { method: 'GET', token }),
+
+  /**
+   * DELETE /api/v1/ai/conversations/{id}
+   * Delete an AI conversation thread permanently.
+   */
+  deleteConversation: (id: string, token?: string) => 
+    apiRequest<any>(`/ai/conversations/${id}`, { method: 'DELETE', token }),
+
+  /**
+   * POST /api/v1/ai/explain
+   * Get an AI explanation for a specific concept, term, or code snippet.
+   */
+  explainConcept: (payload: AiToolContentPayload, token?: string) => 
+    apiRequest<any>('/ai/explain', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/summarize
+   * Get an AI summary of study notes or text content.
+   */
+  summarizeText: (payload: AiToolContentPayload, token?: string) => 
+    apiRequest<any>('/ai/summarize', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/generate-example
+   * Generate a real-world, practical example for an academic topic.
+   */
+  generateExample: (payload: AiToolContentPayload, token?: string) => 
+    apiRequest<any>('/ai/generate-example', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/generate-practice
+   * Generate practice quiz questions from given text or subject material.
+   */
+  generatePractice: (payload: AiToolContentPayload, token?: string) => 
+    apiRequest<any>('/ai/generate-practice', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/evaluate-answer
+   * Evaluate user answers against grading criteria and correctness rules.
+   */
+  evaluateAnswer: (payload: AiEvaluationPayload, token?: string) => 
+    apiRequest<any>('/ai/evaluate-answer', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/explain-mistake
+   * Analyze user answers, pinpoint errors, and explain mistakes clearly.
+   */
+  explainMistake: (payload: AiEvaluationPayload, token?: string) => 
+    apiRequest<any>('/ai/explain-mistake', { method: 'POST', body: payload, token }),
+};
+
+// ==========================================
+// PERSONAL AI COMPANION TYPES
+// ==========================================
+
+export interface AiCompanionPayload {
+  name?: string;
+  personality?: string;
+  avatarUrl?: string;
+  subjectFocus?: string[];
+  [key: string]: any;
+}
+
+// ==========================================
+// PERSONAL AI COMPANION API ENDPOINTS
+// ==========================================
+
+export const aiCompanionApi = {
+  /**
+   * GET /api/v1/ai-companion
+   * Retrieve the authenticated user's custom AI companion configuration.
+   */
+  getAiCompanion: (token?: string) => 
+    apiRequest<any>('/ai-companion', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/ai-companion
+   * Create a custom personal AI companion profile.
+   */
+  createAiCompanion: (payload: AiCompanionPayload, token?: string) => 
+    apiRequest<any>('/ai-companion', { method: 'POST', body: payload, token }),
+
+  /**
+   * PATCH /api/v1/ai-companion
+   * Update personal AI companion configuration and preferences.
+   */
+  updateAiCompanion: (payload: Partial<AiCompanionPayload>, token?: string) => 
+    apiRequest<any>('/ai-companion', { method: 'PATCH', body: payload, token }),
+
+  /**
+   * DELETE /api/v1/ai-companion
+   * Delete custom personal AI companion setup.
+   */
+  deleteAiCompanion: (token?: string) => 
+    apiRequest<any>('/ai-companion', { method: 'DELETE', token }),
+};
+
+// ==========================================
+// AI TUTOR TYPES
+// ==========================================
+
+export interface AiTutorSessionPayload {
+  title?: string;
+  courseId?: string;
+  topicId?: string;
+  [key: string]: any;
+}
+
+export interface AiTutorMessagePayload {
+  message: string;
+  [key: string]: any;
+}
+
+export interface AiTutorQuestionPayload {
+  question: string;
+  [key: string]: any;
+}
+
+export interface AiTutorAnswerPayload {
+  answer: string;
+  [key: string]: any;
+}
+
+export interface AiTutorTeachPayload {
+  topic: string;
+  level?: string;
+  [key: string]: any;
+}
+
+export interface AiTutorExplainPayload {
+  concept: string;
+  depth?: string;
+  [key: string]: any;
+}
+
+export interface AiTutorDiagramPayload {
+  topic: string;
+  diagramType?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// AI TUTOR API ENDPOINTS
+// ==========================================
+
+export const aiTutorApi = {
+  /**
+   * POST /api/v1/ai-tutor/sessions
+   * Create a new interactive AI tutor classroom session.
+   */
+  createSession: (payload?: AiTutorSessionPayload, token?: string) => 
+    apiRequest<any>('/ai-tutor/sessions', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/ai-tutor/sessions
+   * Retrieve all classroom sessions for the authenticated user.
+   */
+  getAllSessions: (token?: string) => 
+    apiRequest<any>('/ai-tutor/sessions', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/ai-tutor/sessions/{id}
+   * Get a specific tutor session by ID along with its messages.
+   */
+  getSessionById: (id: string, token?: string) => 
+    apiRequest<any>(`/ai-tutor/sessions/${id}`, { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/ai-tutor/sessions/{id}/message
+   * Send a message to the AI tutor within a specific session.
+   */
+  sendMessage: (id: string, payload: AiTutorMessagePayload, token?: string) => 
+    apiRequest<any>(`/ai-tutor/sessions/${id}/message`, { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/sessions/{id}/question
+   * Ask a targeted review question to the AI tutor.
+   */
+  askQuestion: (id: string, payload: AiTutorQuestionPayload, token?: string) => 
+    apiRequest<any>(`/ai-tutor/sessions/${id}/question`, { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/sessions/{id}/answer
+   * Submit an answer response to a tutor prompt.
+   */
+  submitAnswer: (id: string, payload: AiTutorAnswerPayload, token?: string) => 
+    apiRequest<any>(`/ai-tutor/sessions/${id}/answer`, { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/sessions/{id}/end
+   * End an active classroom session.
+   */
+  endSession: (id: string, token?: string) => 
+    apiRequest<any>(`/ai-tutor/sessions/${id}/end`, { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/ai-tutor/teach
+   * Trigger Python AI microservice to teach a specific topic.
+   */
+  teachTopic: (payload: AiTutorTeachPayload, token?: string) => 
+    apiRequest<any>('/ai-tutor/teach', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/explain
+   * Trigger Python AI microservice to explain a concept in depth.
+   */
+  explainConcept: (payload: AiTutorExplainPayload, token?: string) => 
+    apiRequest<any>('/ai-tutor/explain', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/generate-diagram
+   * Generate structural diagram specs via AI.
+   */
+  generateDiagram: (payload: AiTutorDiagramPayload, token?: string) => 
+    apiRequest<any>('/ai-tutor/generate-diagram', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai-tutor/drawing-instructions
+   * Get canvas drawing layout instructions for concepts.
+   */
+  getDrawingInstructions: (payload: AiTutorDiagramPayload, token?: string) => 
+    apiRequest<any>('/ai-tutor/drawing-instructions', { method: 'POST', body: payload, token }),
+};
+
+// ==========================================
+// VOICE AI TYPES
+// ==========================================
+
+export interface VoiceTranscribePayload {
+  audioUrl?: string;
+  audioData?: string; // Base64 or binary data representation
+  format?: string;    // e.g., "mp3", "wav", "webm"
+  [key: string]: any;
+}
+
+export interface VoiceRespondPayload {
+  transcript: string;
+  conversationId?: string;
+  [key: string]: any;
+}
+
+export interface VoiceSynthesizePayload {
+  text: string;
+  voiceId?: string;
+  speed?: number;
+  [key: string]: any;
+}
+
+// ==========================================
+// VOICE AI API ENDPOINTS
+// ==========================================
+
+export const voiceAiApi = {
+  /**
+   * POST /api/v1/ai/voice/transcribe
+   * Transcribe recorded audio clips into text.
+   */
+  transcribeAudio: (payload: VoiceTranscribePayload, token?: string) => 
+    apiRequest<any>('/ai/voice/transcribe', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/voice/respond
+   * Process speech transcript text to generate conversational AI responses.
+   */
+  processVoiceResponse: (payload: VoiceRespondPayload, token?: string) => 
+    apiRequest<any>('/ai/voice/respond', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/ai/voice/synthesize
+   * Synthesize text answers back into audio streams and metadata.
+   */
+  synthesizeSpeech: (payload: VoiceSynthesizePayload, token?: string) => 
+    apiRequest<any>('/ai/voice/synthesize', { method: 'POST', body: payload, token }),
+};
+
+// ==========================================
+// AI RECOMMENDATIONS TYPES
+// ==========================================
+
+export interface RecommendationQueryParams {
+  limit?: number;
+  category?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// AI RECOMMENDATIONS API ENDPOINTS
+// ==========================================
+
+export const recommendationsApi = {
+  /**
+   * GET /api/v1/recommendations
+   * Get all personalized recommendations for the authenticated student.
+   */
+  getAllRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/recommendations/courses
+   * Get personalized course recommendations based on user goals and profile.
+   */
+  getCourseRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations/courses', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/recommendations/topics
+   * Get recommended study topics based on current learning progress.
+   */
+  getTopicRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations/topics', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/recommendations/quizzes
+   * Get recommended practice quizzes tailored to fill identified skill gaps.
+   */
+  getQuizRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations/quizzes', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/recommendations/revision
+   * Get spaced-repetition revision recommendations for long-term retention.
+   */
+  getRevisionRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations/revision', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/recommendations/exams
+   * Get recommended mock exam simulations for upcoming test preparation.
+   */
+  getExamRecommendations: (token?: string) => 
+    apiRequest<any>('/recommendations/exams', { method: 'GET', token }),
+};
+
+// ==========================================
+// CALENDAR & SCHEDULE TYPES
+// ==========================================
+
+export interface CalendarEventPayload {
+  title: string;
+  description?: string;
+  startTime: string; // e.g., "2026-09-25T10:00:00.000Z"
+  endTime: string;   // e.g., "2026-09-25T11:30:00.000Z"
+  isAllDay?: boolean;
+  [key: string]: any;
+}
+
+// ==========================================
+// CALENDAR & SCHEDULE API ENDPOINTS
+// ==========================================
+
+export const calendarApi = {
+  /**
+   * GET /api/v1/calendar
+   * Get all calendar events for the authenticated user.
+   */
+  getAllEvents: (token?: string) => 
+    apiRequest<any>('/calendar', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/calendar/month
+   * Get calendar events filtered by specific year and month.
+   */
+  getEventsByMonth: (year: number, month: number, token?: string) => 
+    apiRequest<any>(`/calendar/month?year=${year}&month=${month}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/calendar/week
+   * Get calendar events filtered by a specific week starting date.
+   */
+  getEventsByWeek: (startDate: string, token?: string) => 
+    apiRequest<any>(`/calendar/week?startDate=${encodeURIComponent(startDate)}`, { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/calendar/day
+   * Get calendar events for a specific date.
+   */
+  getEventsByDay: (date: string, token?: string) => 
+    apiRequest<any>(`/calendar/day?date=${encodeURIComponent(date)}`, { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/calendar/events
+   * Create a new calendar schedule event.
+   */
+  createEvent: (payload: CalendarEventPayload, token?: string) => 
+    apiRequest<any>('/calendar/events', { method: 'POST', body: payload, token }),
+
+  /**
+   * PATCH /api/v1/calendar/events/{id}
+   * Update an existing calendar event by ID.
+   */
+  updateEvent: (id: string, payload: Partial<CalendarEventPayload>, token?: string) => 
+    apiRequest<any>(`/calendar/events/${id}`, { method: 'PATCH', body: payload, token }),
+
+  /**
+   * DELETE /api/v1/calendar/events/{id}
+   * Delete a calendar event permanently by ID.
+   */
+  deleteEvent: (id: string, token?: string) => 
+    apiRequest<any>(`/calendar/events/${id}`, { method: 'DELETE', token }),
+};
+
+// ==========================================
+// SEARCH TYPES
+// ==========================================
+
+export interface SearchQueryParams {
+  q: string; // Search query keyword or phrase
+  limit?: number;
+  page?: number;
+  [key: string]: any;
+}
+
+// ==========================================
+// SEARCH API ENDPOINTS
+// ==========================================
+
+export const searchApi = {
+  /**
+   * GET /api/v1/search
+   * Perform a global search across all categories (courses, topics, questions, materials, users).
+   */
+  globalSearch: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search?${queryString}` : '/search';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+
+  /**
+   * GET /api/v1/search/courses
+   * Search specifically within courses.
+   */
+  searchCourses: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search/courses?${queryString}` : '/search/courses';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+
+  /**
+   * GET /api/v1/search/topics
+   * Search specifically within topics.
+   */
+  searchTopics: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search/topics?${queryString}` : '/search/topics';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+
+  /**
+   * GET /api/v1/search/questions
+   * Search specifically within questions.
+   */
+  searchQuestions: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search/questions?${queryString}` : '/search/questions';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+
+  /**
+   * GET /api/v1/search/materials
+   * Search specifically within study materials.
+   */
+  searchMaterials: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search/materials?${queryString}` : '/search/materials';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+
+  /**
+   * GET /api/v1/search/users
+   * Search specifically within users.
+   */
+  searchUsers: (params: SearchQueryParams, token?: string) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/search/users?${queryString}` : '/search/users';
+
+    return apiRequest<any>(endpoint, { method: 'GET', token });
+  },
+};
+
+// ==========================================
+// REPORTS & FEEDBACK TYPES
+// ==========================================
+
+export interface SubmitReportPayload {
+  reason?: string;
+  description?: string;
+  category?: string;
+  [key: string]: any;
+}
+
+export interface SubmitFeedbackPayload {
+  rating?: number; // e.g., 1-5 star rating
+  comment?: string;
+  category?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// REPORTS & FEEDBACK API ENDPOINTS
+// ==========================================
+
+export const reportsFeedbackApi = {
+  /**
+   * POST /api/v1/reports
+   * Submit a general system or user report.
+   */
+  submitReport: (payload: SubmitReportPayload, token?: string) => 
+    apiRequest<any>('/reports', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/reports/me
+   * Get reports submitted by the current authenticated user.
+   */
+  getMyReports: (token?: string) => 
+    apiRequest<any>('/reports/me', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/feedback
+   * Submit user platform feedback and rating.
+   */
+  submitFeedback: (payload: SubmitFeedbackPayload, token?: string) => 
+    apiRequest<any>('/feedback', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/questions/{id}/report
+   * Report a specific question item due to inaccuracies, errors, or issues.
+   */
+  reportQuestion: (id: string, payload: SubmitReportPayload, token?: string) => 
+    apiRequest<any>(`/questions/${id}/report`, { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/content/{id}/report
+   * Report a specific content item or study material.
+   */
+  reportContent: (id: string, payload: SubmitReportPayload, token?: string) => 
+    apiRequest<any>(`/content/${id}/report`, { method: 'POST', body: payload, token }),
+};
+
+// ==========================================
+// SUBSCRIPTIONS & PAYMENTS TYPES
+// ==========================================
+
+export interface SubscribePayload {
+  planId: string;
+  billingCycle?: 'monthly' | 'annual' | string;
+  [key: string]: any;
+}
+
+export interface UpgradeSubscriptionPayload {
+  newPlanId: string;
+  [key: string]: any;
+}
+
+export interface InitializePaymentPayload {
+  planId: string;
+  amount: number;
+  currency?: string; // e.g., "NGN", "USD"
+  callbackUrl?: string;
+  [key: string]: any;
+}
+
+export interface VerifyPaymentPayload {
+  reference: string;
+  transactionId?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// SUBSCRIPTIONS & PAYMENTS API ENDPOINTS
+// ==========================================
+
+export const subscriptionsPaymentsApi = {
+  /**
+   * GET /api/v1/plans
+   * Get all available subscription plans.
+   */
+  getAvailablePlans: (token?: string) => 
+    apiRequest<any>('/plans', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/subscription
+   * Get current user active subscription details.
+   */
+  getCurrentSubscription: (token?: string) => 
+    apiRequest<any>('/subscription', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/subscription/subscribe
+   * Subscribe to a chosen plan.
+   */
+  subscribeToPlan: (payload: SubscribePayload, token?: string) => 
+    apiRequest<any>('/subscription/subscribe', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/subscription/cancel
+   * Cancel the current active subscription.
+   */
+  cancelSubscription: (token?: string) => 
+    apiRequest<any>('/subscription/cancel', { method: 'POST', token }),
+
+  /**
+   * POST /api/v1/subscription/upgrade
+   * Upgrade current subscription plan to a higher tier.
+   */
+  upgradeSubscription: (payload: UpgradeSubscriptionPayload, token?: string) => 
+    apiRequest<any>('/subscription/upgrade', { method: 'POST', body: payload, token }),
+
+  /**
+   * GET /api/v1/subscription/history
+   * Get user subscription and billing history.
+   */
+  getSubscriptionHistory: (token?: string) => 
+    apiRequest<any>('/subscription/history', { method: 'GET', token }),
+
+  /**
+   * POST /api/v1/payments/initialize
+   * Initialize a payment transaction (e.g., via Paystack or Flutterwave) to get a gateway URL.
+   */
+  initializePayment: (payload: InitializePaymentPayload, token?: string) => 
+    apiRequest<any>('/payments/initialize', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/payments/verify
+   * Verify a payment transaction reference post-checkout.
+   */
+  verifyPayment: (payload: VerifyPaymentPayload, token?: string) => 
+    apiRequest<any>('/payments/verify', { method: 'POST', body: payload, token }),
+
+  /**
+   * POST /api/v1/payments/webhook
+   * Payment gateway webhook listener endpoint (typically handled server-side).
+   */
+  handlePaymentWebhook: (payload: any) => 
+    apiRequest<any>('/payments/webhook', { method: 'POST', body: payload }),
+};
+
+// ==========================================
+// USAGE LIMITS TYPES
+// ==========================================
+
+export interface UsageOverviewResponse {
+  totalQuota: number;
+  usedQuota: number;
+  remainingQuota: number;
+  resetDate?: string;
+  [key: string]: any;
+}
+
+// ==========================================
+// USAGE LIMITS API ENDPOINTS
+// ==========================================
+
+export const usageApi = {
+  /**
+   * GET /api/v1/usage
+   * Get overall account usage overview and quotas.
+   */
+  getUsageOverview: (token?: string) => 
+    apiRequest<UsageOverviewResponse>('/usage', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/usage/ai
+   * Get AI generation usage and daily limits.
+   */
+  getAiUsage: (token?: string) => 
+    apiRequest<any>('/usage/ai', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/usage/documents
+   * Get document generation and upload usage metrics.
+   */
+  getDocumentUsage: (token?: string) => 
+    apiRequest<any>('/usage/documents', { method: 'GET', token }),
+
+  /**
+   * GET /api/v1/usage/quizzes
+   * Get quiz generation and attempt usage stats.
+   */
+  getQuizUsage: (token?: string) => 
+    apiRequest<any>('/usage/quizzes', { method: 'GET', token }),
+};
