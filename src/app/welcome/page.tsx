@@ -63,7 +63,7 @@ export default function WelcomeScreen() {
             />
           </div>
           <span className="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">
-            gleam<span className="text-brand-blue">Learn</span>
+            Gleam<span className="text-brand-blue">Learn</span>
           </span>
         </div>
 

@@ -58,7 +58,7 @@ export default function NotificationsHub() {
     },
     {
       id: '4',
-      title: 'Upcoming Exam Alert',
+      title: 'Upcoming Exam Alerts',
       description: 'Vector Calculus Midterm Test is scheduled for tomorrow at 10:00 AM. Review your saved notes.',
       category: 'Exam',
       time: '5 hours ago',
@@ -74,7 +74,7 @@ export default function NotificationsHub() {
     },
     {
       id: '6',
-      title: 'New AI Study Recommendation',
+      title: 'New AI Study Recommendations',
       description: 'Based on recent quiz performance, our AI tutor prepared a practice set on Quantum Superposition.',
       category: 'AI recommendations',
       time: 'Yesterday',
