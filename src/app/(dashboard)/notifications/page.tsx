@@ -99,7 +99,7 @@ export default function NotificationsHub() {
 
   const handleMarkAllAsRead = () => {
     setNotifications(prev => prev.map(item => ({ ...item, read: true })));
-  };
+  }; 
 
   const handleDeleteNotification = (id: string) => {
     setNotifications(prev => prev.filter(item => item.id !== id));
