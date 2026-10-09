@@ -70,6 +70,104 @@
   background: #374151;
 }
 
+/* ---------------------------------------------------------------------------
+   Enter animation utilities
+   Components across the app already use `animate-in fade-in zoom-in-95
+   slide-in-from-*` (tw-animate-css naming). These utilities implement that
+   subset natively. Duration comes from Tailwind's `duration-*` utility.
+   Only opacity / translate / scale animate, and nothing persists after the
+   animation ends (no fill-mode), so fixed-position descendants are unaffected.
+--------------------------------------------------------------------------- */
+@property --tw-enter-name { syntax: "*"; inherits: false; }
+@property --tw-enter-opacity { syntax: "*"; inherits: false; }
+@property --tw-enter-translate { syntax: "*"; inherits: false; }
+@property --tw-enter-scale { syntax: "*"; inherits: false; }
+
+/* Separate keyframes so `translate` / `scale` are only animated when a
+   slide / zoom utility asks for it. (Animating them from `none` still yields
+   a non-none value mid-animation, which would briefly turn the element into
+   a containing block for position:fixed descendants.) */
+@keyframes gl-enter-fade {
+  from { opacity: var(--tw-enter-opacity, 1); }
+}
+
+@keyframes gl-enter-slide {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    translate: var(--tw-enter-translate);
+  }
+}
+
+@keyframes gl-enter-zoom {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    scale: var(--tw-enter-scale);
+  }
+}
+
+@utility animate-in {
+  animation: var(--tw-enter-name, gl-enter-fade) var(--tw-duration, 150ms) var(--tw-ease, cubic-bezier(0.22, 1, 0.36, 1));
+
+  /* Reduced motion: keep the gentle fade, drop all movement */
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: gl-enter-fade;
+  }
+}
+
+@utility fade-in { --tw-enter-opacity: 0; }
+@utility zoom-in-* { --tw-enter-name: gl-enter-zoom; --tw-enter-scale: calc(--value(integer) * 1%); }
+@utility slide-in-from-left { --tw-enter-name: gl-enter-slide; --tw-enter-translate: -100% 0; }
+@utility slide-in-from-right { --tw-enter-name: gl-enter-slide; --tw-enter-translate: 100% 0; }
+@utility slide-in-from-top { --tw-enter-name: gl-enter-slide; --tw-enter-translate: 0 -100%; }
+@utility slide-in-from-bottom { --tw-enter-name: gl-enter-slide; --tw-enter-translate: 0 100%; }
+@utility slide-in-from-left-* { --tw-enter-name: gl-enter-slide; --tw-enter-translate: calc(--value(integer) * var(--spacing) * -1) 0; }
+@utility slide-in-from-right-* { --tw-enter-name: gl-enter-slide; --tw-enter-translate: calc(--value(integer) * var(--spacing)) 0; }
+@utility slide-in-from-top-* { --tw-enter-name: gl-enter-slide; --tw-enter-translate: 0 calc(--value(integer) * var(--spacing) * -1); }
+@utility slide-in-from-bottom-* { --tw-enter-name: gl-enter-slide; --tw-enter-translate: 0 calc(--value(integer) * var(--spacing)); }
+
+/* ---------------------------------------------------------------------------
+   Skeleton loading surface (see components/ui/Skeleton.tsx)
+--------------------------------------------------------------------------- */
+@keyframes gl-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@layer components {
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: #f3f4f6;
+  }
+
+  .dark .skeleton {
+    background-color: #1f2937;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: gl-shimmer 1.6s ease-in-out infinite;
+  }
+
+  .dark .skeleton::after {
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    .skeleton::after {
+      animation: none;
+      display: none;
+    }
+  }
+}
+
 /* Glassmorphism utilities */
 .glass-panel {
   background: rgba(17, 24, 39, 0.75);

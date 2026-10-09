@@ -83,7 +83,7 @@ export default function MobileNav() {
             <Link
               key={tab.name}
               href={tab.href}
-              className={`flex flex-col items-center py-1.5 px-3 rounded-xl transition-all relative ${
+              className={`flex flex-col items-center py-1.5 px-3 rounded-xl transition-all duration-200 active:scale-95 relative ${
                 isActive
                   ? 'text-[var(--color-brand-blue)] dark:text-blue-400 font-bold'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 font-medium'

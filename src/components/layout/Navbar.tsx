@@ -162,7 +162,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileMenu}
-          className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
           aria-label="Open Menu"
         >
           <Menu className="w-5 h-5" />
@@ -199,17 +199,17 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <button
           onClick={toggleTheme}
           aria-label="Toggle Theme"
-          className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
         >
           {isDarkMode ? (
-            <Sun className="w-5 h-5 text-amber-400" />
+            <Sun className="w-5 h-5 text-amber-400 animate-in fade-in zoom-in-75 duration-300" />
           ) : (
-            <Moon className="w-5 h-5 text-gray-600" />
+            <Moon className="w-5 h-5 text-gray-600 animate-in fade-in zoom-in-75 duration-300" />
           )}
         </button>
 
         {/* Notification Bell */}
-        <button className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <button className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#111827]" />
         </button>
@@ -218,7 +218,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <div className="relative">
           <button
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-            className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
           >
             HS
           </button>
@@ -233,7 +233,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
                 <Link
                   href="/settings"
                   onClick={() => setShowProfileDropdown(false)}
-                  className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <User className="w-4 h-4 text-gray-400" />
                   <span>My Profile</span>
@@ -241,7 +241,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
                 <Link
                   href="/settings"
                   onClick={() => setShowProfileDropdown(false)}
-                  className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <Settings className="w-4 h-4 text-gray-400" />
                   <span>Settings</span>
@@ -250,7 +250,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
               <div className="border-t border-gray-100 dark:border-gray-700 pt-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-left"
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Log out</span>

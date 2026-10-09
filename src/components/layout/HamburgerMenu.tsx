@@ -57,7 +57,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop overlay */}
       <div 
-        className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
@@ -98,7 +98,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
                 key={item.name}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
                   isActive
                     ? 'bg-blue-50 dark:bg-blue-950/40 text-[var(--color-brand-blue)] dark:text-blue-400 font-semibold'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'

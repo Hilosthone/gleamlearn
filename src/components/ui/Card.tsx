@@ -24,7 +24,7 @@ export const Card: React.FC<CardProps> = ({
     <div
       onClick={onClick}
       className={`rounded-2xl p-5 transition-all duration-200 ${variants[variant]} ${
-        onClick ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md' : ''
+        onClick ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md active:scale-[0.99]' : ''
       } ${className}`}
     >
       {children}

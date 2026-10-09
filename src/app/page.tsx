@@ -154,6 +154,7 @@ import BentoFeatures from "@/components/BentoFeatures";
 import GamificationSection from "@/components/GamificationSection";
 import PricingSection from "@/components/PricingSection";
 import Footer from "@/components/Footer";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // Dynamically import the 3D Showcase component with SSR completely disabled.
 const Interactive3DShowcase = dynamic(
@@ -161,8 +162,9 @@ const Interactive3DShowcase = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-[500px] flex items-center justify-center bg-gray-50 dark:bg-dark-card/50">
-        <div className="text-sm text-brand-purple animate-pulse font-medium">
+      <div role="status" className="relative overflow-hidden w-full h-[500px] flex items-center justify-center bg-gray-50 dark:bg-dark-card/50">
+        <Skeleton className="absolute inset-0 rounded-none bg-transparent dark:bg-transparent" />
+        <div className="relative text-sm text-brand-purple animate-pulse font-medium">
           Loading 3D Experience...
         </div>
       </div>

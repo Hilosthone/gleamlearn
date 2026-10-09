@@ -70,6 +70,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import MotionProvider from "@/components/MotionProvider";
 
 // Load Plus Jakarta Sans font from Google Fonts for clean modern typography
 const jakarta = Plus_Jakarta_Sans({
@@ -126,7 +127,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${jakarta.variable}`} suppressHydrationWarning>
       <body className="bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 antialiased selection:bg-brand-blue selection:text-white transition-colors duration-300">
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );
