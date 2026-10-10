@@ -1132,7 +1132,7 @@ export default function InvestorShowcaseEngine() {
               <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span><strong>Tip:</strong> Tap or hold the controls to rotate &amp; zoom.</span>
             </div>
-            <span className="hidden sm:inline font-mono text-brand-purple whitespace-nowrap">gleamLearn Enterprise 3D</span>
+            <span className="hidden sm:inline font-mono text-brand-purple whitespace-nowrap">GleamLearn Enterprise 3D</span>
           </div>
         </div>
 
