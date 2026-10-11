@@ -706,7 +706,7 @@ export default function PricingSection() {
                   href="#signup"
                   className="w-full py-3.5 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg shadow-brand-blue/30 text-center flex items-center justify-center gap-2 transition-all"
                 >
-                  Upgrade to Pro <ArrowRight className="w-4 h-4" />
+                  Upgrade to Pro Now <ArrowRight className="w-4 h-4" />
                 </a>
               </div>
 
@@ -800,7 +800,7 @@ export default function PricingSection() {
 
               <div className="flex items-center justify-center gap-2 mb-2">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Welcome to gleamLearn!
+                  Welcome to GleamLearn!
                 </h3>
                 <PartyPopper className="w-5 h-5 text-brand-blue" />
               </div>
