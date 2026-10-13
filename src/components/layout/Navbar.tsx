@@ -114,12 +114,30 @@ import React, { useState, useEffect } from 'react';
 import { Menu, Bell, Zap, Flame, Coins, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signOut } from '@/lib/learner-auth';
+import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
+import { useApiQuery } from '@/hooks/useApiQuery';
+import { loadLearnerStats } from '@/lib/learning';
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? '?').slice(0, 2)).toUpperCase();
+}
 
 interface NavbarProps {
   onOpenMobileMenu: () => void;
 }
 
 export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
+  // Identity comes from the backend-confirmed session (GET /auth/me), never from hard-coded sample data
+  const session = useOptionalLearnerSession();
+  // Real streak / XP / coins for the signed-in learner (the layout persists, so this loads once per visit)
+  const stats = useApiQuery(() => loadLearnerStats(), [], { enabled: Boolean(session) });
+  const streakDays = stats.data?.streak?.currentStreak;
+  const totalXp = stats.data?.xp?.totalXp;
+  const coinBalance = stats.data?.coins?.balance;
+  const displayName = session?.user.fullName || session?.user.username || session?.user.email || '';
+  const subtitle = (session?.user.department as string | undefined) || (session?.user.secondaryClass as string | undefined) || session?.user.email || '';
   const router = useRouter();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -151,9 +169,10 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileDropdown(false);
-    router.push('/auth/login');
+    await signOut(); // deletes the learner token (the backend logout is stateless)
+    router.replace('/auth/login');
   };
 
   return (
@@ -180,19 +199,21 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         {/* Streak Counter Badge */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-2xs">
           <Flame className="w-4 h-4 fill-orange-500 text-orange-500" />
-          <span>5 Days</span>
+          <span>{typeof streakDays === 'number' ? `${streakDays} Day${streakDays === 1 ? '' : 's'}` : '—'}</span>
+          <span className="sr-only">streak</span>
         </div>
 
         {/* XP Counter Badge */}
         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-[var(--color-brand-blue)] dark:text-blue-400 text-xs font-bold shadow-2xs">
           <Zap className="w-4 h-4 fill-blue-500 text-blue-500" />
-          <span>1,240 XP</span>
+          <span>{typeof totalXp === 'number' ? `${totalXp.toLocaleString()} XP` : '— XP'}</span>
         </div>
 
         {/* Coins Counter Badge */}
         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-2xs">
           <Coins className="w-4 h-4 text-amber-500 fill-amber-500" />
-          <span>350</span>
+          <span>{typeof coinBalance === 'number' ? coinBalance.toLocaleString() : '—'}</span>
+          <span className="sr-only">coins</span>
         </div>
 
         {/* Theme Toggle Button */}
@@ -220,14 +241,15 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
             className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
           >
-            HS
+            <span aria-hidden="true">{displayName ? initialsOf(displayName) : '?'}</span>
+            <span className="sr-only">Open profile menu</span>
           </button>
 
           {showProfileDropdown && (
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1f2937] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-bold text-gray-900 dark:text-white">Hilosthone Sulyman</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Computer Science & Eng.</p>
+                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{displayName}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{subtitle}</p>
               </div>
               <div className="py-1">
                 <Link

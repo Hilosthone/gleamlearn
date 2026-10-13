@@ -648,6 +648,11 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
+import { usersApi, aiCompanionApi } from '@/lib/api';
+import { ApiError } from '@/lib/api-error';
+import { hasLearnerSession } from '@/lib/learner-auth';
+import { buildOnboardingRequests } from '@/lib/onboarding-profile';
 
 // Import Modular Step Components
 import StepEducationType from './components/StepEducationType';
@@ -696,6 +701,47 @@ export default function OnboardingPage() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  /**
+   * Saves the answers the backend can store (verified live): academic profile, study time, goal and AI companion.
+   * Answers without a backend field are listed instead of being reported as saved.
+   */
+  const saveAnswers = async () => {
+    if (!hasLearnerSession()) {
+      router.replace('/auth/login?next=/onboarding');
+      return;
+    }
+    const req = buildOnboardingRequests({ eduType, academic: academicData, preferences, goal: goalData, companion: aiCompanion });
+    setIsLoading(true);
+    setSaveError(null);
+    try {
+      await usersApi.updateAcademicProfile(req.academicProfile);
+      if (Object.keys(req.preferences).length) await usersApi.updatePreferences(req.preferences);
+      if (Object.keys(req.companion).length) {
+        try {
+          await aiCompanionApi.createAiCompanion(req.companion as never);
+        } catch (err) {
+          // 409: a companion already exists for this account, so update it instead
+          if (err instanceof ApiError && err.status === 409) await aiCompanionApi.updateAiCompanion(req.companion);
+          else throw err;
+        }
+      }
+      router.push('/dashboard');
+    } catch (err) {
+      const apiError = err instanceof ApiError ? err : new ApiError('Could not save your answers.', null, 'unknown');
+      if (apiError.kind === 'unauthorized') {
+        router.replace('/auth/login?next=/onboarding&reason=expired');
+        return;
+      }
+      setSaveError(
+        apiError.kind === 'network'
+          ? 'We could not reach GleamLearn. Check your connection and try again.'
+          : 'Your answers could not be saved. Please try again.',
+      );
+      setIsLoading(false);
+    }
+  };
 
   // Navigation Handlers
   const nextStep = () => {
@@ -703,11 +749,7 @@ export default function OnboardingPage() {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
-        router.push('/dashboard');
-      }, 1500);
+      void saveAnswers();
     }
   };
 
@@ -773,7 +815,15 @@ export default function OnboardingPage() {
       </div>
 
       {/* Bottom Action Button */}
-      <div className="w-full pt-4">
+      <div className="w-full pt-4 space-y-3">
+        {currentStep === totalSteps && !saveError && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Saved to your profile: education details, study time, goal and AI companion. Learning speed, session length and
+            explanation style are not stored yet.
+          </p>
+        )}
+        {saveError && <Alert variant="error" title="Not saved">{saveError}</Alert>}
+
         <Button 
           type="button"
           variant="primary" 

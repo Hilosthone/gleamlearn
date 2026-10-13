@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle
 } from 'lucide-react';
+import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
 
 type SubView = 'profile' | 'edit' | 'settings';
 type SettingsTab = 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy' | 'account';
@@ -17,6 +18,7 @@ type SettingsTab = 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy
 export default function ProfileSettingsHub() {
   const [activeView, setActiveView] = useState<SubView>('profile');
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('appearance');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // User Profile State
   const [userProfile, setUserProfile] = useState({
@@ -534,14 +536,24 @@ export default function ProfileSettingsHub() {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white">Change Password</h4>
-                      <p className="text-[11px] text-gray-500">Update your account password securely.</p>
+                  <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white">Change Password</h4>
+                        <p className="text-[11px] text-gray-500">Update your account password securely.</p>
+                      </div>
+                      {!isChangingPassword && (
+                        <button
+                          type="button"
+                          onClick={() => setIsChangingPassword(true)}
+                          aria-expanded={isChangingPassword}
+                          className="px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#2563EB] text-xs font-bold border border-blue-200/50"
+                        >
+                          Update
+                        </button>
+                      )}
                     </div>
-                    <button className="px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#2563EB] text-xs font-bold border border-blue-200/50">
-                      Update
-                    </button>
+                    {isChangingPassword && <ChangePasswordForm onCancel={() => setIsChangingPassword(false)} />}
                   </div>
 
                   <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-between">

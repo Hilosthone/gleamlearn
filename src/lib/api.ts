@@ -6,64 +6,46 @@
  * It manages base URLs, JSON headers, error handling, and automated token injection.
  */
 
-const API_BASE_URL = 
-  process.env.NEXT_PUBLIC_API_URL || 'https://gleamlearn-backend.onrender.com/api/v1';
+import { createHttpClient, type HttpRequestOptions } from './http-client.ts';
+import { AI_REQUEST_TIMEOUT_MS, API_BASE_URL, DEFAULT_REQUEST_TIMEOUT_MS } from './config.ts';
+import { isAiOperation } from './ai-endpoints.ts';
+import { getStoredToken, notifySessionExpired } from './session.ts';
+
+export { ApiError } from './api-error.ts';
 
 // ==========================================
-// UPDATED CORE REQUEST HELPER (Supports FormData for Profile Pictures)
+// CORE REQUEST HELPER
 // ==========================================
+// Learner requests go through the shared HTTP core (lib/http-client.ts), which adds
+// timeouts, cancellation, typed ApiError failures and safe (GET-only) retries.
+// Admin requests use the same core with a separate token (lib/admin-api.ts).
 
-async function apiRequest<T>(
-  endpoint: string, 
-  options: RequestOptions = {}
-): Promise<T> {
-  const { method = 'GET', body, token, headers = {} } = options;
+const learnerHttp = createHttpClient({
+  baseUrl: API_BASE_URL,
+  getToken: () => getStoredToken('learner'),
+  timeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+  onUnauthorized: () => notifySessionExpired('learner'),
+});
 
-  const requestHeaders: Record<string, string> = {
-    ...headers,
-  };
-
-  // Only set Content-Type to JSON if body is NOT FormData
-  if (!(body instanceof FormData)) {
-    requestHeaders['Content-Type'] = 'application/json';
+async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  // AI generation can legitimately take minutes; give it a longer timeout and no automatic retry
+  if (isAiOperation(endpoint)) {
+    return learnerHttp.request<T>(endpoint, {
+      ...options,
+      timeoutMs: options.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
+      retries: 0,
+    });
   }
-
-  // Automatically attach Bearer token if supplied or found in localStorage
-  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null);
-  if (authToken) {
-    requestHeaders['Authorization'] = `Bearer ${authToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method,
-    headers: requestHeaders,
-    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-  });
-
-  // Parse JSON response safely
-  let data;
-  try {
-    data = await response.json();
-  } catch (err) {
-    data = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || `API Error: ${response.status} ${response.statusText}`);
-  }
-
-  return data as T;
+  return learnerHttp.request<T>(endpoint, options);
 }
 
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
 
-export interface RequestOptions {
+export interface RequestOptions extends Omit<HttpRequestOptions, 'method' | 'body'> {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: any;
-  token?: string;
-  headers?: Record<string, string>;
 }
 
 export interface SignupPayload {
@@ -97,6 +79,8 @@ export interface RefreshTokenPayload {
 }
 
 export interface VerifyEmailPayload {
+  /** Required by the backend: the code is only checked against this account. */
+  email: string;
   token: string;
 }
 
@@ -109,13 +93,16 @@ export interface ForgotPasswordPayload {
 }
 
 export interface ResetPasswordPayload {
-  token: string;
+  email: string; // required by the backend: the code is only checked against this account
+  token: string; // 6-digit code from the password reset email
   newPassword: string;
+  confirmNewPassword: string; // required by the backend; must equal newPassword
 }
 
 export interface ChangePasswordPayload {
   oldPassword: string;
   newPassword: string;
+  confirmNewPassword: string; // required by the backend; must equal newPassword
 }
 
 export interface UpdateProfilePayload {
@@ -198,8 +185,8 @@ export const authApi = {
    * GET /api/v1/auth/me
    * Get profile details of the authenticated user.
    */
-  getMe: (token?: string) => 
-    apiRequest<any>('/auth/me', { method: 'GET', token }),
+  getMe: (token?: string, options: Pick<RequestOptions, 'signal'> = {}) => 
+    apiRequest<any>('/auth/me', { ...options, method: 'GET', token }),
 
   /**
    * PATCH /api/v1/auth/me
@@ -347,8 +334,9 @@ export const usersApi = {
    * DELETE /api/v1/users/me
    * Soft delete current user account (marks as deleted in backend).
    */
-  deleteMe: (token?: string) => 
-    apiRequest<any>('/users/me', { method: 'DELETE', token }),
+  deleteMe: (password: string, token?: string) => 
+    // The backend requires the current password (400 "Incorrect password" otherwise); data is retained (soft delete)
+    apiRequest<any>('/users/me', { method: 'DELETE', body: { password }, token }),
 
   /**
    * POST /api/v1/users/me/freeze

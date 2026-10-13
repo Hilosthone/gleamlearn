@@ -8,10 +8,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Eye, EyeOff, Check, X, ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Alert } from '@/components/ui/Alert';
+import { SlowNotice } from '@/components/ui/states';
+import { useSlowFlag } from '@/hooks/useSlowFlag';
+import { ApiError } from '@/lib/api-error';
+import { signUp, signUpErrorMessage } from '@/lib/learner-auth';
+import { PASSWORD_MIN_LENGTH, validateEmail } from '@/lib/validation/password';
 
 export default function SignUpPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const isSlow = useSlowFlag(isLoading);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -68,8 +76,30 @@ export default function SignUpPage() {
     setModalAlert({ isOpen: true, title, message });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Real sign-up: POST /auth/signup. The backend returns a session token (stored under the learner key)
+   * and emails a 6-digit code; the learner then verifies at /auth/verify-email.
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    setSubmitError(null);
+
+    if (!formData.fullName.trim() || !formData.username.trim()) {
+      showAlert("Details Required", "Please enter your full name and a username.");
+      return;
+    }
+
+    const emailError = validateEmail(formData.email);
+    if (emailError) {
+      showAlert("Check Your Email", emailError);
+      return;
+    }
+
+    if (formData.password.length < PASSWORD_MIN_LENGTH) {
+      showAlert("Password Too Short", `Your password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
+      return;
+    }
 
     if (!formData.termsAccepted) {
       showAlert("Terms Required", "Please accept the terms and conditions to proceed with your registration.");
@@ -82,12 +112,21 @@ export default function SignUpPage() {
     }
     
     setIsLoading(true);
-
-    // Simulate backend signup validation, then seamlessly redirect to the Onboarding wizard
-    setTimeout(() => {
+    try {
+      await signUp({
+        fullName: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        dateOfBirth: formData.dob || undefined,
+      });
+      router.replace(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}`);
+    } catch (err) {
+      const apiError = err instanceof ApiError ? err : new ApiError('Could not create your account.', null, 'unknown');
+      setSubmitError(signUpErrorMessage(apiError).message);
       setIsLoading(false);
-      router.push('/onboarding');
-    }, 1200);
+    }
   };
 
   return (
@@ -176,12 +215,11 @@ export default function SignUpPage() {
 
         {/* Date of Birth Selection */}
         <Input
-          label="Date of Birth / Age Range"
+          label="Date of Birth (optional)"
           type="date"
           name="dob"
           value={formData.dob}
           onChange={handleChange}
-          required
         />
 
         {/* Password Field with Eye Toggle */}
@@ -290,11 +328,18 @@ export default function SignUpPage() {
           />
           <label htmlFor="termsAccepted" className="text-xs text-gray-600 dark:text-gray-400 leading-snug">
             I agree to the{' '}
-            <Link href="/terms" className="text-brand-blue hover:underline font-semibold">Terms of Service</Link>{' '}
+            <Link href="/Legal&Help/TermsOfService" className="text-brand-blue hover:underline font-semibold">Terms of Service</Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-brand-blue hover:underline font-semibold">Privacy Policy</Link>.
+            <Link href="/Legal&Help/PrivacyPolicy" className="text-brand-blue hover:underline font-semibold">Privacy Policy</Link>.
           </label>
         </div>
+
+        {isSlow && <SlowNotice />}
+        {submitError && (
+          <Alert variant="error" title="Account not created">
+            {submitError}
+          </Alert>
+        )}
 
         <div className="pt-3">
           <Button type="submit" variant="primary" size="lg" className="w-full shadow-lg shadow-brand-blue/25" isLoading={isLoading}>
@@ -314,7 +359,7 @@ export default function SignUpPage() {
 
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
-          <span>Encrypted & Secured Registration</span>
+          <span>Your password is sent over a secure connection and stored hashed</span>
         </div>
       </div>
 
