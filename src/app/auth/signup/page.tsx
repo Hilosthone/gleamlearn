@@ -113,7 +113,7 @@ export default function SignUpPage() {
     
     setIsLoading(true);
     try {
-      await signUp({
+      const { verificationEmail } = await signUp({
         fullName: formData.fullName,
         username: formData.username,
         email: formData.email,
@@ -121,7 +121,8 @@ export default function SignUpPage() {
         confirmPassword: formData.confirmPassword,
         dateOfBirth: formData.dob || undefined,
       });
-      router.replace(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}`);
+      // Tell the verify screen what happened to the email (sent / pending / failed), so it never claims a code was sent when it was not
+      router.replace(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim())}&delivery=${verificationEmail}`);
     } catch (err) {
       const apiError = err instanceof ApiError ? err : new ApiError('Could not create your account.', null, 'unknown');
       setSubmitError(signUpErrorMessage(apiError).message);

@@ -578,3 +578,31 @@ The UI maps responses by status, with message checks only where the backend uses
 - Markdown in lesson content is shown as plain text. A safe Markdown renderer (no raw HTML) can be added later.
 - Course progress loads one request per lesson. That's fine for small courses; a batched backend endpoint would scale better.
 - `/recommendations` is AI-backed (Phase 6).
+
+## Batch 25 (2026-10-20): Deployment-gap diagnosis and honest email-delivery feedback
+
+**Status:** ✅ Unit tests, type-check, lint and build. ✅ **Live:** the real modules ran against a running local backend (`learner-session` 29/29, `learner-learning` 23/23, `frontend-clients` 31/31). 🟥 **Production sign-up/login are NOT fixed**; see `docs/KNOWN_ISSUES.md`.
+
+### Findings (read-only)
+
+- **Vercel serves `origin/main` = `5d879ae` (2026-10-11).** It has the simulated login, and the auth routes return 404.
+- The auth integration (`dff2b87`, 2026-10-13) is on `origin/devbranch` and the local `main`. **Local `main` is unpushed.**
+- **`.env.local` points `NEXT_PUBLIC_API_URL` at the production Render backend**, so local development calls production. I recommend changing it to the local backend (not changed automatically).
+
+### Changes
+
+- **`lib/learner-auth.ts`:**
+  - `signUp` returns `{ user, verificationEmail }`, and `resendVerification` returns the delivery state.
+  - New `deliveryOf` and `deliveryNotice`: `sent`, `pending` or `failed`, read from the backend (Batch 24). `unknown` covers older backends.
+- **`/auth/signup`:** passes the delivery state to `/auth/verify-email?…&delivery=`.
+- **`/auth/verify-email`:** shows the real state. A failed send shows a **warning** ("We could not send the verification email just now…"), never "we sent you a code". Resend updates the banner with the new result.
+
+### Verification
+
+| Command | Result |
+|---|---|
+| `npm test` | ✅ **78/78** (+2: delivery state; failed or pending sends never claim "we sent") |
+| `npx tsc --noEmit -p .` | ✅ |
+| eslint | ✅ 417 errors / 87 warnings, unchanged from Batch 22. The changed files have 0. |
+| `npx next build` | ✅ |
+| Live suites (backend repo `test/live/`) | ✅ 29/29, 23/23, 31/31 |

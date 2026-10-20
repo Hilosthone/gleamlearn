@@ -65,8 +65,38 @@ export async function signIn(email: string, password: string): Promise<SignInRes
   return { user: (res as { data: LearnerUser }).data, accountStatus: normalizeStatus((res as { accountStatus?: unknown }).accountStatus) };
 }
 
+/**
+ * What the backend reports about the verification email (backend Batch 24): it waits at most 3 s, then says
+ * 'sent', 'pending' (still trying) or 'failed'. 'unknown' = an older backend that does not report it.
+ */
+export type EmailDelivery = 'sent' | 'pending' | 'failed' | 'unknown';
+
+export function deliveryOf(res: unknown): EmailDelivery {
+  const v = (res as { verificationEmail?: unknown } | null)?.verificationEmail;
+  return v === 'sent' || v === 'pending' || v === 'failed' ? v : 'unknown';
+}
+
+/** Learner-facing text for a delivery state (never claims an email was sent when it was not). */
+export function deliveryNotice(delivery: EmailDelivery): { tone: 'success' | 'info' | 'warning'; text: string } {
+  switch (delivery) {
+    case 'sent':
+      return { tone: 'success', text: 'We sent a 6-digit code to your email. It expires in 10 minutes.' };
+    case 'pending':
+      return { tone: 'info', text: 'Your code is on its way. If it has not arrived in a few minutes, check spam or send a new code.' };
+    case 'failed':
+      return { tone: 'warning', text: 'We could not send the verification email just now. Wait a moment, then send a new code.' };
+    default:
+      return { tone: 'info', text: 'We sent a 6-digit code to your email. Enter it below to confirm your address.' };
+  }
+}
+
+export interface SignUpResult {
+  user: LearnerUser;
+  verificationEmail: EmailDelivery;
+}
+
 /** Creates the account and signs in with the returned token. The email still has to be verified. */
-export async function signUp(input: SignUpInput): Promise<LearnerUser> {
+export async function signUp(input: SignUpInput): Promise<SignUpResult> {
   const res = await authApi.signup({
     fullName: input.fullName.trim(),
     username: input.username.trim(),
@@ -76,15 +106,15 @@ export async function signUp(input: SignUpInput): Promise<LearnerUser> {
     ...(input.dateOfBirth ? { dateOfBirth: input.dateOfBirth } : {}),
   });
   setStoredToken('learner', takeToken(res));
-  return (res as { data: LearnerUser }).data;
+  return { user: (res as { data: LearnerUser }).data, verificationEmail: deliveryOf(res) };
 }
 
 export async function verifyEmail(email: string, code: string): Promise<void> {
   await authApi.verifyEmail({ email: email.trim(), token: code.trim() });
 }
 
-export async function resendVerification(email: string): Promise<void> {
-  await authApi.resendVerification({ email: email.trim() });
+export async function resendVerification(email: string): Promise<EmailDelivery> {
+  return deliveryOf(await authApi.resendVerification({ email: email.trim() }));
 }
 
 /** Ends the session locally even if the request fails (the backend logout is stateless). */

@@ -113,3 +113,22 @@ test('onboarding drops empty answers instead of sending blanks', () => {
   const r = buildOnboardingRequests(answers({ academic: { institution: ' ', facultyOrClass: '', departmentOrSubject: '', levelOrTerm: '', semester: '' } }));
   assert.deepEqual(Object.keys(r.academicProfile).sort(), ['educationType', 'examAimOrGoals']);
 });
+
+test('signUp and resendVerification surface the backend delivery state', async () => {
+  responder = () => json(201, { accessToken: TOKEN, verificationEmail: 'failed', data: { id: 'u1', email: 'a@x.test' } });
+  const res = await auth.signUp({ fullName: 'Ada', username: 'ada', email: 'a@x.test', password: 'Secret1!', confirmPassword: 'Secret1!' });
+  assert.equal(res.verificationEmail, 'failed');
+  assert.equal(res.user.id, 'u1');
+  responder = () => json(201, { message: 'x', verificationEmail: 'pending' });
+  assert.equal(await auth.resendVerification('a@x.test'), 'pending');
+  responder = () => json(201, { message: 'older backend' });
+  assert.equal(await auth.resendVerification('a@x.test'), 'unknown');
+});
+
+test('delivery notices never claim an email was sent when it was not', () => {
+  assert.equal(auth.deliveryNotice('sent').tone, 'success');
+  assert.equal(auth.deliveryNotice('failed').tone, 'warning');
+  assert.doesNotMatch(auth.deliveryNotice('failed').text, /we sent/i);
+  assert.doesNotMatch(auth.deliveryNotice('pending').text, /we sent/i);
+  assert.equal(auth.deliveryOf({ verificationEmail: 'bogus' }), 'unknown');
+});

@@ -9,7 +9,7 @@ import { Alert } from '@/components/ui/Alert';
 import { SlowNotice } from '@/components/ui/states';
 import { useSlowFlag } from '@/hooks/useSlowFlag';
 import { ApiError } from '@/lib/api-error';
-import { hasLearnerSession, resendVerification, verifyEmail, verifyErrorMessage } from '@/lib/learner-auth';
+import { deliveryNotice, hasLearnerSession, resendVerification, verifyEmail, verifyErrorMessage, type EmailDelivery } from '@/lib/learner-auth';
 import { validateEmail } from '@/lib/validation/password';
 
 const CODE_PATTERN = /^\d{6}$/;
@@ -30,11 +30,16 @@ export default function VerifyEmailPage() {
 
 function VerifyEmailForm() {
   const router = useRouter();
-  const [email, setEmail] = useState(useSearchParams().get('email') ?? '');
+  const params = useSearchParams();
+  const [email, setEmail] = useState(params.get('email') ?? '');
+  // Delivery state of the email sent at sign-up (from the backend); drives the first message on this page
+  const [delivery, setDelivery] = useState<EmailDelivery>(() => {
+    const d = params.get('delivery');
+    return d === 'sent' || d === 'pending' || d === 'failed' ? d : 'unknown';
+  });
   const [code, setCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; code?: string }>({});
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [pending, setPending] = useState<'verify' | 'resend' | null>(null);
   const isSlow = useSlowFlag(pending !== null);
@@ -53,7 +58,6 @@ function VerifyEmailForm() {
     if (errors.email || errors.code) return;
     setPending('verify');
     setError(null);
-    setNotice(null);
     try {
       await verifyEmail(email, code);
       setVerified(true);
@@ -71,10 +75,9 @@ function VerifyEmailForm() {
     if (emailError) return;
     setPending('resend');
     setError(null);
-    setNotice(null);
     try {
-      await resendVerification(email);
-      setNotice('A new code has been sent. It expires in 10 minutes.');
+      const result = await resendVerification(email);
+      setDelivery(result);
       setCode('');
     } catch (err) {
       const apiError = err instanceof ApiError ? err : new ApiError('Could not send a new code.', null, 'unknown');
@@ -93,8 +96,14 @@ function VerifyEmailForm() {
     <main className="min-h-screen flex flex-col justify-center bg-white dark:bg-[#0B0F19] px-6 py-10 max-w-md mx-auto transition-colors duration-300">
       <div className="mb-8 space-y-2">
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Verify your email</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">We sent a 6-digit code to your email. Enter it below to confirm your address.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Enter the 6-digit code from your verification email.</p>
       </div>
+
+      {!verified && (
+        <div className="mb-4" aria-live="polite">
+          <Alert variant={deliveryNotice(delivery).tone}>{deliveryNotice(delivery).text}</Alert>
+        </div>
+      )}
 
       {verified ? (
         <div className="space-y-4">
@@ -140,7 +149,6 @@ function VerifyEmailForm() {
           />
 
           {isSlow && <SlowNotice />}
-          {notice && <Alert variant="success">{notice}</Alert>}
           {error && (
             <Alert variant="error" title="Not verified">
               {error}
