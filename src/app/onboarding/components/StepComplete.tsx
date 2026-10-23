@@ -4,7 +4,8 @@ import React from 'react';
 import { Card } from '@/components/ui/Card';
 
 interface StepCompleteProps {
-  goalData: { goal: string };
+  /** Only passed when the learner set a goal in this onboarding (otherwise it came from registration). */
+  goalData?: { goal: string };
   academicData: { institution: string; departmentOrSubject: string };
   aiCompanion: { name: string };
 }
@@ -21,20 +22,23 @@ export default function StepComplete({ goalData, academicData, aiCompanion }: St
       <div className="space-y-2">
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">You Are All Set!</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-          {aiCompanion.name} has personalized your profile, set your targets, and prepared your initial lesson module.
+          Your learning profile is saved and {aiCompanion.name} is ready. Start in the Learning Hub by choosing your first course.
         </p>
       </div>
 
       <Card variant="bordered" className="text-left space-y-3 bg-gray-50/50 dark:bg-gray-900/40">
-        <div className="flex justify-between text-xs text-gray-500 font-semibold">
-          <span>INITIAL GOAL</span>
-          <span className="text-[var(--color-brand-blue)]">Active</span>
-        </div>
-        <p className="text-sm font-bold text-gray-900 dark:text-white">{goalData.goal}</p>
-        <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
-          <span className="text-[10px] text-gray-400 font-semibold uppercase">Recommended First Activity</span>
+        {goalData?.goal && (
+          <>
+            <div className="flex justify-between text-xs text-gray-500 font-semibold">
+              <span>YOUR GOAL</span>
+            </div>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">{goalData.goal}</p>
+          </>
+        )}
+        <div className={goalData?.goal ? 'pt-2 border-t border-gray-200 dark:border-gray-800' : ''}>
+          <span className="text-[10px] text-gray-400 font-semibold uppercase">Next step</span>
           <p className="text-xs font-bold text-gray-800 dark:text-gray-200 mt-0.5">
-            Introductory Diagnostic & Core Concept Breakdown
+            Open the Learning Hub, enrol in a course and start your first lesson.
           </p>
         </div>
       </Card>

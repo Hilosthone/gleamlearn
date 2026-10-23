@@ -13,6 +13,9 @@
   --color-brand-orange: #F97316;
   --color-brand-purple: #7C3AED;
   --color-brand-red: #EF4444;
+  /* Accents from the GleamLearn brand palette (registration selected states and highlights) */
+  --color-brand-gold: #D4A72C;
+  --color-brand-brown: #8B5E3C;
 
   /* Dark Neutral System */
   --color-dark-bg: #0B0F19;

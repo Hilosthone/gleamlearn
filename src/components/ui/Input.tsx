@@ -10,6 +10,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, className = '', id, ...props }, ref) => {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    // Error / helper text is linked to the input so screen readers announce it with the field
+    const noteId = inputId && (error || helperText) ? `${inputId}-note` : undefined;
 
     return (
       <div className="w-full flex flex-col gap-1.5">
@@ -21,6 +23,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={noteId}
           className={`w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#111827] border ${
             error
               ? 'border-[var(--color-brand-red)] focus:ring-[var(--color-brand-red)]/20'
@@ -28,8 +32,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           } text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${className}`}
           {...props}
         />
-        {error && <span className="text-xs text-[var(--color-brand-red)] font-medium animate-in fade-in slide-in-from-top-1 duration-200">{error}</span>}
-        {helperText && !error && <span className="text-xs text-gray-500 dark:text-gray-400">{helperText}</span>}
+        {error && <span id={noteId} className="text-xs text-[var(--color-brand-red)] font-medium animate-in fade-in slide-in-from-top-1 duration-200">{error}</span>}
+        {helperText && !error && <span id={noteId} className="text-xs text-gray-500 dark:text-gray-400">{helperText}</span>}
       </div>
     );
   }

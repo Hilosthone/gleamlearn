@@ -53,7 +53,8 @@ export function buildOnboardingRequests(a: OnboardingAnswers): OnboardingRequest
     if (ac.levelOrTerm.trim()) notStored.push('Academic session / term');
     if (ac.departmentOrSubject.trim()) notStored.push('Core subjects');
   } else {
-    academicProfile = clean({ educationType: 'Other' });
+    // 'other': the backend documents only 'Secondary' | 'University', so no educationType is sent
+    academicProfile = {};
   }
 
   const goalText = [a.goal.goal, a.goal.targetScore && `target ${a.goal.targetScore}`, a.goal.targetDate && `by ${a.goal.targetDate}`]
@@ -73,5 +74,51 @@ export function buildOnboardingRequests(a: OnboardingAnswers): OnboardingRequest
       appearance: a.companion.appearance,
     }),
     notStored,
+  };
+}
+
+
+// ---------------------------------------------------------------------------------------------------------
+// Onboarding after registration: do not ask again for what the learner already gave at sign-up
+// ---------------------------------------------------------------------------------------------------------
+
+/** Onboarding step numbers: 1 education type, 2 academic setup, 3 preferences, 4 goal, 5 AI companion, 6 done. */
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
+export const ALL_ONBOARDING_STEPS: OnboardingStep[] = [1, 2, 3, 4, 5, 6];
+
+export interface ProfileSnapshot {
+  educationType?: string | null;
+  secondaryClass?: string | null;
+  university?: string | null;
+  examAimOrGoals?: string | null;
+  preferredStudyTime?: string | null;
+}
+
+const filled = (v: unknown) => typeof v === 'string' && v.trim().length > 0;
+
+/** Steps still worth showing, from the profile returned by GET /auth/me. The companion and finish steps always remain. */
+export function onboardingPlan(profile: ProfileSnapshot | null | undefined): OnboardingStep[] {
+  if (!profile) return ALL_ONBOARDING_STEPS;
+  const hasEducation = filled(profile.educationType) || filled(profile.secondaryClass) || filled(profile.university) || filled(profile.examAimOrGoals);
+  return ALL_ONBOARDING_STEPS.filter((step) => {
+    if ((step === 1 || step === 2) && hasEducation) return false;
+    if (step === 3 && filled(profile.preferredStudyTime)) return false;
+    if (step === 4 && filled(profile.examAimOrGoals)) return false;
+    return true;
+  });
+}
+
+/** Keeps only the answers from steps that were actually shown, so skipped (pre-filled) data is never overwritten. */
+export function onlyShownAnswers(req: OnboardingRequests, plan: OnboardingStep[]): OnboardingRequests {
+  const shown = new Set(plan);
+  const academicProfile: Record<string, string> = {};
+  if (shown.has(1) || shown.has(2)) Object.assign(academicProfile, req.academicProfile);
+  delete academicProfile.examAimOrGoals;
+  if (shown.has(4) && req.academicProfile.examAimOrGoals) academicProfile.examAimOrGoals = req.academicProfile.examAimOrGoals;
+  return {
+    academicProfile,
+    preferences: shown.has(3) ? req.preferences : {},
+    companion: shown.has(5) ? req.companion : {},
+    notStored: req.notStored,
   };
 }

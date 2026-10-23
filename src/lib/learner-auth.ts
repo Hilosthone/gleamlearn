@@ -45,7 +45,26 @@ export interface SignUpInput {
   password: string;
   confirmPassword: string;
   dateOfBirth?: string;
+  // Optional profile fields accepted by the backend SignupDto (strings; omitted when empty)
+  country?: string;
+  educationType?: string;
+  secondarySchool?: string;
+  secondaryClass?: string;
+  secondaryStream?: string;
+  university?: string;
+  faculty?: string;
+  department?: string;
+  courseOfStudy?: string;
+  level?: string;
+  examAimOrGoals?: string;
+  preferredStudyTime?: string;
 }
+
+/** Optional SignupDto fields forwarded as-is when non-empty (explicit allowlist: nothing else is sent). */
+const OPTIONAL_SIGNUP_FIELDS = [
+  'dateOfBirth', 'country', 'educationType', 'secondarySchool', 'secondaryClass', 'secondaryStream',
+  'university', 'faculty', 'department', 'courseOfStudy', 'level', 'examAimOrGoals', 'preferredStudyTime',
+] as const;
 
 function takeToken(res: unknown): string {
   const token = (res as { accessToken?: unknown } | null)?.accessToken;
@@ -103,7 +122,9 @@ export async function signUp(input: SignUpInput): Promise<SignUpResult> {
     email: input.email.trim(),
     password: input.password,
     confirmPassword: input.confirmPassword,
-    ...(input.dateOfBirth ? { dateOfBirth: input.dateOfBirth } : {}),
+    ...Object.fromEntries(
+      OPTIONAL_SIGNUP_FIELDS.flatMap((k) => (typeof input[k] === 'string' && input[k]!.trim() ? [[k, input[k]!.trim()]] : [])),
+    ),
   });
   setStoredToken('learner', takeToken(res));
   return { user: (res as { data: LearnerUser }).data, verificationEmail: deliveryOf(res) };

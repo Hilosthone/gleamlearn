@@ -11,7 +11,7 @@ Two independent problems; both must be fixed before the deployed journey can wor
    - `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify-email` and `/admin/login` return 404 there. The CDN reported the page cached for about 9 days on 2026-10-20.
    - **The real authentication work is commit `dff2b87` (2026-10-13).** It is on `origin/devbranch` and on the local `main`, but **local `main` has not been pushed**, so Vercel never built it.
    - **To fix (needs approval):** push `main` (or merge `devbranch` into `main` on GitHub) so Vercel deploys it. This is only useful once backend issue 2 is fixed.
-2. **The deployed backend returns 500 for every learner-account lookup.** Its `public.users` table in Supabase doesn't match the code. See the backend's `docs/PRODUCTION_RECOVERY.md`; the read-only SQL is in `docs/diagnostics/users-schema-inspection.sql`.
+2. **The deployed backend returns 500 for every learner-account lookup:** the learner table `public.users` **does not exist** in Supabase (owner-confirmed 2026-10-20). See the backend's `docs/PRODUCTION_RECOVERY.md` (revision 2); the read-only catalog SQL is in `docs/diagnostics/users-schema-inspection.sql`.
 
 ## 🟧 Local development talks to the production backend
 
@@ -27,3 +27,10 @@ Two independent problems; both must be fixed before the deployed journey can wor
 ## Not verified
 
 - Browser-level end-to-end runs: no browser automation was available. The flows are verified at the module and HTTP level against a running local backend; see `TESTING` in the backend `test/live/README.md`.
+
+## 🟧 Registration: backend gaps (see `docs/REGISTRATION.md` → "Backend gaps")
+
+- **No examination-preparation `educationType`.** Exam learners are registered without one, with their exams stored in `examAimOrGoals`. The smallest fix needs no migration.
+- **`GET /examinations` requires sign-in,** so the wizard can't list the real supported exams.
+- **No onboarding-completed flag:** onboarding infers what's missing from profile fields.
+- **No age or minors policy:** this is a product and legal decision, not invented here.

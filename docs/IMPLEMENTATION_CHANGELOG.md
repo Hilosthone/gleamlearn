@@ -606,3 +606,64 @@ The UI maps responses by status, with message checks only where the backend uses
 | eslint | ✅ 417 errors / 87 warnings, unchanged from Batch 22. The changed files have 0. |
 | `npx next build` | ✅ |
 | Live suites (backend repo `test/live/`) | ✅ 29/29, 23/23, 31/31 |
+
+## Batch 26 (2026-10-23): Adaptive registration wizard, resumable drafts, honest onboarding
+
+**Status:** ✅ Unit tests, type-check, lint, build, and a server render plus bundle check on the production build. 🟡 Not exercised in a real browser (no automation available) or against a live backend today (the backend folder wasn't accessible). Nothing committed, pushed or deployed.
+
+**Details:** `docs/REGISTRATION.md` covers the contract, the three paths, drafts, interruptions, 3D, accessibility and the backend gaps.
+
+### What changed
+
+- **`/auth/signup`:** replaced by `RegistrationWizard`.
+  - Six steps: path, about you, security, education, goals, review.
+  - Three paths: secondary school, university, examination preparation. Each shows and sends only its own fields.
+  - **Exactly one** `POST /auth/signup`, from the review step.
+  - Per-step validation that mirrors the backend contract, plus a few product rules (class, university, or at least one exam).
+  - Real class, level and stream options from `GET /academic-levels`, with a free-text fallback.
+- **New logic modules** (pure, node-tested), under `src/lib/registration/`:
+  - `wizard.ts`: the state model, validation and the explicit payload builder (exam learners get no `educationType`, so they aren't misclassified).
+  - `draft.ts`: versioned, allowlisted, expiring drafts. This tab always; this device opt-in only. Never passwords, tokens or consent.
+  - `submit.ts`: one request; outcome mapping; a sign-in-based check when the outcome is unknown, so there's no blind retry and no duplicate account.
+- **Already signed in on `/auth/signup`:** "You already have an account", with verify, continue or sign out.
+- **`/onboarding`:** reads `GET /auth/me` and shows only the missing steps, saving only those. The completion step no longer claims "prepared your initial lesson module" or a hard-coded "recommended first activity".
+- **3D:**
+  - `RegistrationScene3D` is lazy (`next/dynamic`, `ssr: false`), for screens 1024 px or wider with WebGL only.
+  - It ignores pointer events, pauses while the tab is hidden, honours reduced motion, and falls back to a static image when WebGL is unavailable or lost.
+  - **Verified:** the initial `/auth/signup` JavaScript has 0 chunks containing three.js.
+- **Shared components:**
+  - `Input` links errors and helper text to the field (`aria-invalid`, `aria-describedby`).
+  - `learner-auth.signUp` forwards the optional SignupDto fields through an explicit allowlist.
+  - `onboarding-profile`: the "other" choice no longer sends `educationType: 'Other'`.
+- **Tokens:** `--color-brand-gold` and `--color-brand-brown` are new (additive).
+
+### Files
+
+- New:
+  - `src/lib/registration/{wizard,draft,submit}.ts`
+  - `src/components/auth/registration/{RegistrationWizard,RegistrationSteps,RegistrationVisual,RegistrationScene3D,Scene3DFallback}.tsx`
+  - `src/lib/__tests__/registration.test.mjs` (23 tests)
+  - `docs/REGISTRATION.md`
+- Modified:
+  - `src/app/auth/signup/page.tsx` (rewritten; the previous version is in git at `f514030`)
+  - `src/app/onboarding/page.tsx`, `src/app/onboarding/components/StepComplete.tsx`
+  - `src/lib/onboarding-profile.ts`, `src/lib/learner-auth.ts`
+  - `src/components/ui/Input.tsx`, `src/app/globals.css`
+
+### Verification
+
+| Command | Result |
+|---|---|
+| `npm test` | ✅ **101/101** (78 before; +23 registration and onboarding) |
+| `npx tsc --noEmit -p .` | ✅ |
+| eslint (whole `src`) | ✅ 417 errors / 87 warnings, **unchanged**. New files: 0. The one warning in `StepComplete.tsx` (`academicData` unused) also exists at `HEAD`. |
+| `npx next build` | ✅ |
+| `next start` + HTTP | ✅ `/auth/signup` → 200, server-rendering step 1 with the three paths and the device-save option. Initial chunks: 13, about 800 KB, **0 with three.js**. |
+
+### Backend gaps (approval needed; see `docs/REGISTRATION.md`)
+
+- No examination-preparation `educationType`. The smallest fix is `@IsIn` plus a Swagger enum, with no migration.
+- `GET /examinations` isn't public.
+- There's no onboarding-completed flag.
+- There's no age or minors policy.
+- Signup body allowlisting needs confirming on the backend.

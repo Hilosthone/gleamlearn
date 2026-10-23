@@ -645,14 +645,14 @@
 // src/app/onboarding/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { usersApi, aiCompanionApi } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
-import { hasLearnerSession } from '@/lib/learner-auth';
-import { buildOnboardingRequests } from '@/lib/onboarding-profile';
+import { fetchCurrentLearner, hasLearnerSession } from '@/lib/learner-auth';
+import { ALL_ONBOARDING_STEPS, buildOnboardingRequests, onboardingPlan, onlyShownAnswers, type OnboardingStep } from '@/lib/onboarding-profile';
 
 // Import Modular Step Components
 import StepEducationType from './components/StepEducationType';
@@ -664,8 +664,25 @@ import StepComplete from './components/StepComplete';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
+  // Steps still needed for THIS learner (answers given at registration are not asked again)
+  const [plan, setPlan] = useState<OnboardingStep[]>(ALL_ONBOARDING_STEPS);
+  const [position, setPosition] = useState(0);
+  const currentStep = plan[Math.min(position, plan.length - 1)];
+  const totalSteps = plan.length;
+  const isLast = position >= plan.length - 1;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasLearnerSession()) return;
+    fetchCurrentLearner()
+      .then((res) => {
+        if (!cancelled) setPlan(onboardingPlan(res.user as Parameters<typeof onboardingPlan>[0]));
+      })
+      .catch(() => undefined); // keep the full plan; saving still requires a valid session
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Form State Containers
   const [eduType, setEduType] = useState<'secondary' | 'university' | 'other'>('university');
@@ -712,11 +729,11 @@ export default function OnboardingPage() {
       router.replace('/auth/login?next=/onboarding');
       return;
     }
-    const req = buildOnboardingRequests({ eduType, academic: academicData, preferences, goal: goalData, companion: aiCompanion });
+    const req = onlyShownAnswers(buildOnboardingRequests({ eduType, academic: academicData, preferences, goal: goalData, companion: aiCompanion }), plan);
     setIsLoading(true);
     setSaveError(null);
     try {
-      await usersApi.updateAcademicProfile(req.academicProfile);
+      if (Object.keys(req.academicProfile).length) await usersApi.updateAcademicProfile(req.academicProfile);
       if (Object.keys(req.preferences).length) await usersApi.updatePreferences(req.preferences);
       if (Object.keys(req.companion).length) {
         try {
@@ -745,8 +762,8 @@ export default function OnboardingPage() {
 
   // Navigation Handlers
   const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep((prev) => prev + 1);
+    if (!isLast) {
+      setPosition((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       void saveAnswers();
@@ -754,13 +771,13 @@ export default function OnboardingPage() {
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
+    if (position > 0) {
+      setPosition((prev) => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const progressPercentage = Math.round((currentStep / totalSteps) * 100);
+  const progressPercentage = Math.round(((position + 1) / totalSteps) * 100);
 
   return (
     <main className="min-h-screen flex flex-col justify-between bg-white dark:bg-[#0B0F19] px-6 py-8 max-w-lg mx-auto transition-colors duration-300">
@@ -771,12 +788,12 @@ export default function OnboardingPage() {
           <button 
             type="button"
             onClick={prevStep} 
-            disabled={currentStep === 1}
+            disabled={position === 0}
             className="hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-0 transition-opacity cursor-pointer"
           >
             ← Back
           </button>
-          <span>STEP {currentStep} OF {totalSteps}</span>
+          <span>STEP {position + 1} OF {totalSteps}</span>
           <span className="text-[var(--color-brand-blue)]">{progressPercentage}% Complete</span>
         </div>
         <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -810,13 +827,13 @@ export default function OnboardingPage() {
           <StepAiCompanion aiCompanion={aiCompanion} setAiCompanion={setAiCompanion} />
         )}
         {currentStep === 6 && (
-          <StepComplete goalData={goalData} academicData={academicData} aiCompanion={aiCompanion} />
+          <StepComplete goalData={plan.includes(4) ? goalData : undefined} academicData={academicData} aiCompanion={aiCompanion} />
         )}
       </div>
 
       {/* Bottom Action Button */}
       <div className="w-full pt-4 space-y-3">
-        {currentStep === totalSteps && !saveError && (
+        {isLast && !saveError && (
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
             Saved to your profile: education details, study time, goal and AI companion. Learning speed, session length and
             explanation style are not stored yet.
@@ -832,7 +849,7 @@ export default function OnboardingPage() {
           onClick={nextStep}
           isLoading={isLoading}
         >
-          {currentStep === totalSteps ? 'Start Learning' : 'Continue'}
+          {isLast ? 'Start Learning' : 'Continue'}
         </Button>
       </div>
 

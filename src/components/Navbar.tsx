@@ -367,7 +367,7 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white flex items-center gap-1">
-                  gleam<span className="text-brand-blue">Learn</span>
+                  Gleam<span className="text-brand-blue">Learn</span>
                   <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse"></span>
                 </span>
               </div>
@@ -484,7 +484,7 @@ export default function Navbar() {
                       />
                     </div>
                     <span className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white flex items-center gap-1">
-                      gleam<span className="text-brand-blue">Learn</span>
+                      Gleam<span className="text-brand-blue">Learn</span>
                     </span>
                   </div>
 
