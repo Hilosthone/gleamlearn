@@ -260,3 +260,11 @@ test('the "other" onboarding choice no longer sends an undocumented educationTyp
   });
   assert.equal('educationType' in req.academicProfile, false);
 });
+
+test('409 "Passwords do not match" is a field error on the security step, not "account exists"', async () => {
+  responder = () => json(409, { statusCode: 409, message: 'Passwords do not match', error: 'Conflict' });
+  const r = await S.submitRegistration(body());
+  assert.equal(r.kind, 'invalid');
+  assert.equal(r.step, 'security');
+  assert.ok(r.fieldErrors.confirmPassword);
+});

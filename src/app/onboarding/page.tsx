@@ -666,6 +666,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   // Steps still needed for THIS learner (answers given at registration are not asked again)
   const [plan, setPlan] = useState<OnboardingStep[]>(ALL_ONBOARDING_STEPS);
+  // Steps are shown only once the plan is known, so a slow GET /auth/me never lets the learner re-answer sign-up questions
+  const [planReady, setPlanReady] = useState(false);
   const [position, setPosition] = useState(0);
   const currentStep = plan[Math.min(position, plan.length - 1)];
   const totalSteps = plan.length;
@@ -673,12 +675,16 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!hasLearnerSession()) return;
+    if (!hasLearnerSession()) {
+      void Promise.resolve().then(() => !cancelled && setPlanReady(true));
+      return;
+    }
     fetchCurrentLearner()
       .then((res) => {
         if (!cancelled) setPlan(onboardingPlan(res.user as Parameters<typeof onboardingPlan>[0]));
       })
-      .catch(() => undefined); // keep the full plan; saving still requires a valid session
+      .catch(() => undefined) // keep the full plan; saving still requires a valid session
+      .finally(() => !cancelled && setPlanReady(true));
     return () => {
       cancelled = true;
     };
@@ -778,6 +784,14 @@ export default function OnboardingPage() {
   };
 
   const progressPercentage = Math.round(((position + 1) / totalSteps) * 100);
+
+  if (!planReady) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0B0F19] px-6">
+        <p role="status" className="text-sm text-gray-500 dark:text-gray-400">Loading your profile…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex flex-col justify-between bg-white dark:bg-[#0B0F19] px-6 py-8 max-w-lg mx-auto transition-colors duration-300">

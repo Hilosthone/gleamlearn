@@ -10,7 +10,7 @@ Status **2026-10-23**. Code: `src/components/auth/registration/`, `src/lib/regis
         └─ already signed in? → "You already have an account" (verify / continue / sign out)
 ```
 
-## Backend contract (verified earlier against `src/auth/dto/signup.dto.ts` and live HTTP; not re-read on 2026-10-23 because the backend folder wasn't accessible in this session)
+## Backend contract (re-verified 2026-10-23 against `src/auth/dto/signup.dto.ts` and `AuthService.signup` in `src/auth/auth.service.ts`, and by browser runs against a local backend)
 
 | Field | Rule | Sent for |
 |---|---|---|
@@ -24,7 +24,13 @@ Status **2026-10-23**. Code: `src/components/auth/registration/`, `src/lib/regis
 
 **Response:** `201 { accessToken, verificationEmail: 'sent'|'pending'|'failed', data }`. The learner is signed in (the token is stored), but the email isn't verified yet.
 
-**Errors:** 400 validation (mapped to fields and the first affected step); 409 "already registered"; 429 throttled (2/s, 10/min per IP).
+**Errors:**
+- 400: validation errors, mapped to fields and the first affected step.
+- 409 "Email or username is already registered".
+- **409 "Passwords do not match":** the backend uses the same status for a confirmation mismatch. The wizard tells the two apart by the message, and shows the mismatch as a field error on the security step.
+- 429: throttled (2/s, 10/min per IP).
+
+The backend copies each accepted field into the new user explicitly, so unknown body fields are ignored.
 
 **Options:** `GET /academic-levels` is public and provides the class, level and stream lists. If it fails, the fields become free text. The examination list (`GET /examinations`) **requires sign-in**, so it can't be used during registration. The exam step offers the examples WAEC, NECO, JAMB/UTME and Post-UTME, plus free entry.
 
@@ -56,9 +62,10 @@ Every path also has an optional goals and study-time step.
 | 400 | Field errors shown, and the wizard jumps to the first affected step |
 | 409 | "Already registered": sign in, or use a different email and username |
 | Network lost or timeout during sign-up | **Outcome unknown.** No automatic retry. "Check whether my account was created" signs in with the same credentials (existing `POST /auth/login`). Success means the account exists, and the learner continues to verification. 401 means it wasn't created, and creating it now is safe (a duplicate would get 409 anyway). Still offline: a message to try again. |
-| Already signed in and returning to `/auth/signup` | "You already have an account": verify the email (if unverified), continue, or sign out to create another account |
+| Already signed in and returning to `/auth/signup` | While the stored session is checked (`GET /auth/me`), "Checking your account…" is shown instead of the form. Then "You already have an account": verify the email (if unverified), continue, or sign out to create another account. An expired session shows the form. |
+| Browser Back / Forward | Back moves to the previous step, including from step 2 back to step 1 (which has no URL hash). Forward is allowed only when every step before the target is valid; otherwise the address is put back to the current step. |
 | Verification interrupted | `/auth/verify-email` can be reopened at any time. "Send a new code" uses `POST /auth/resend-verification`; the delivery state is shown honestly. |
-| Onboarding interrupted | `/onboarding` reads `GET /auth/me` and shows **only the steps still missing** (`onboardingPlan`). Saving sends only the answers from the steps that were shown (`onlyShownAnswers`), so registration data is never overwritten with defaults. |
+| Onboarding interrupted | `/onboarding` reads `GET /auth/me` and shows **only the steps still missing** (`onboardingPlan`). Until that answer arrives, it shows "Loading your profile…", so a slow backend never shows steps that were already answered. If the request fails, all steps are shown. Saving sends only the answers from the steps that were shown (`onlyShownAnswers`), so registration data is never overwritten with defaults. |
 
 ## Visual design and 3D
 
@@ -86,9 +93,55 @@ Every path also has an optional goals and study-time step.
 2. **The examination list isn't public.** `GET /examinations` sits behind JWT. A public read-only list (or making that GET public) would let the wizard offer the real supported exams.
 3. **There's no "onboarding completed" flag.** Completion is inferred from profile fields.
 4. **Age and minors policy:** date of birth is optional, and no age rule exists in the backend or the product. Don't invent one; it needs a product and legal decision (parental consent for under-13s or under-16s, for example).
-5. **The signup DTO doesn't restrict extra fields** (the global ValidationPipe has `whitelist: false`). The signup service destructures the body into `...onboardingData`, which it appears to spread into the new user (seen 2026-10-12; **to be confirmed** when the backend folder is accessible). The frontend sends only allowlisted fields, but the backend should strip or allowlist too (a security hardening item).
+5. ~~Extra sign-up fields~~ **Resolved (verified 2026-10-23):** `AuthService.signup` builds the new user field by field, so unknown fields are ignored. Optional hardening: the global ValidationPipe still has `whitelist: false`.
+6. **A password mismatch returns 409** (the same status as "already registered"). The frontend handles it by message. A 400 would be cleaner, but changing it is a backend change that needs approval.
 
-## Not verified
+## Browser verification (2026-10-23)
 
-- **In a real browser:** no browser automation was available. The logic is unit-tested (23 tests in `registration.test.mjs`), and the build and server render were checked over HTTP. **Manual check:** complete each path on a phone-width and a desktop window, refresh mid-way, close and reopen with "Save progress" ticked, switch off the network on "Create account", then use "Check whether my account was created".
-- **Live sign-up with the new optional fields** (for example the exam path without `educationType`) wasn't run today, because the backend folder wasn't accessible. The same endpoint and fields were verified live on 2026-10-20.
+`e2e/browser/registration.mjs` drives headless Chrome against a local backend on a disposable database. See `e2e/browser/README.md`. Result: **23/23 passed, plus 1 warning.** Labels: real = real frontend plus local backend; mocked = the request was failed on purpose in the browser; browser = no backend involved.
+
+- **Layout (browser):**
+  - At 360 px there's no horizontal overflow and no canvas.
+  - At 1280 px the 3D canvas loads lazily.
+  - With WebGL disabled, the static fallback is shown and the wizard still works.
+- **Keyboard and motion (browser):**
+  - Radios work with Space and the arrow keys, and Enter submits.
+  - Focus moves to the step heading, or to the first invalid field (with `aria-invalid` and `aria-describedby`).
+  - With reduced motion, step changes take about 20 ms instead of about 390 ms.
+- **Drafts (browser):**
+  - By default the draft is kept only in this tab, survives a reload and isn't visible to a new tab.
+  - "Save progress on this device" makes it available to a new tab. Unticking deletes the device copy, and "Start over" deletes everything.
+  - Expired and malformed drafts are discarded.
+  - The password is never stored, and `termsAccepted` is always `false`.
+- **Three paths (real):** each payload contains only its path's fields, even after switching paths:
+  - Secondary sends `educationType: 'Secondary'` plus school and class.
+  - University sends `'University'` plus its fields, with no secondary fields.
+  - Exam sends no `educationType` and no university fields; exams, timeframe, subjects and goals go into `examAimOrGoals`.
+  - Empty optional fields are omitted. A triple click sends exactly one request.
+- **Failures (mocked):**
+  - Request failed before reaching the backend: "outcome unknown" banner, no automatic retry. The check (real login, 401) reports "not created", and the second attempt creates the account.
+  - Response lost after the account was created: the check (real login) finds the account, the learner continues to verification, and **no second sign-up is sent**.
+- **Accounts (real):**
+  - 409 duplicate gives "Account already exists".
+  - A signed-in learner on `/auth/signup` gets the account panel.
+- **Verification and onboarding (real):**
+  - The email code from the SMTP sink verifies the account, then onboarding starts.
+  - Onboarding shows only the missing steps: 2 for the secondary and exam learners, 4 for the university learner who skipped study time and goal.
+  - Finishing goes to `/dashboard`.
+- **Session (real):**
+  - Log Out clears the session.
+  - Logging in returns to `/dashboard`.
+  - Forgot password, then the emailed code, then reset, then logging in with the new password all work.
+- **Console (browser):** no unexpected errors or exceptions.
+- **Warning:** 429s on `/xp`, `/coins`, `/streak` and `/notifications` when the dashboard is opened several times within a second. The Navbar and the page both load the stats, so each dashboard load sends 2 requests to each endpoint, and the limit is 3 per second per route.
+
+**Defects found by these runs and fixed:**
+- Browser Back from step 2 did nothing.
+- The dashboard Sidebar's "Log Out" left the session token in place.
+- Onboarding briefly showed all 6 steps before the profile loaded.
+- A signed-in learner briefly saw the empty form.
+
+**Still not verified:**
+- Real mobile devices and screen readers (only headless Chrome emulation was used).
+- Safari and Firefox.
+- The production deployment.

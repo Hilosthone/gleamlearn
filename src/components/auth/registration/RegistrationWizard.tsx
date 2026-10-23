@@ -73,6 +73,8 @@ export function RegistrationWizard() {
   const [banner, setBanner] = useState<Banner | null>(null);
   const [submitting, setSubmitting] = useState<null | 'signup' | 'reconcile'>(null);
   const [existing, setExisting] = useState<LearnerUser | null>(null);
+  // While a stored session is being checked, the form is not shown (a signed-in learner gets the account panel instead)
+  const [checkingSession, setCheckingSession] = useState(false);
   const [options, setOptions] = useState<AcademicOptions | null>(null);
   const [ready, setReady] = useState(false);
   const isSlow = useSlowFlag(submitting !== null);
@@ -87,9 +89,11 @@ export function RegistrationWizard() {
   useEffect(() => {
     let cancelled = false;
     if (hasLearnerSession()) {
+      void Promise.resolve().then(() => !cancelled && setCheckingSession(true));
       fetchCurrentLearner()
         .then((res) => !cancelled && setExisting(res.user))
-        .catch(() => undefined); // an expired token just means "not signed in" here
+        .catch(() => undefined) // an expired token just means "not signed in" here
+        .finally(() => !cancelled && setCheckingSession(false));
     }
     // Storage is only readable in the browser; apply what it holds right after mount (outside the effect body)
     void Promise.resolve().then(() => {
@@ -133,20 +137,24 @@ export function RegistrationWizard() {
       return;
     }
     headingRef.current?.focus();
-    if (typeof window !== 'undefined' && window.location.hash !== `#${step}`) {
+    // The first step has no hash (the page URL itself), so an empty hash counts as the first step
+    if (typeof window !== 'undefined' && (window.location.hash.replace('#', '') || STEPS[0]) !== step) {
       window.history.pushState({ step }, '', `#${step}`);
     }
   }, [step]);
 
   useEffect(() => {
-    // Browser Back/Forward moves between steps already visited (never skips validation forward)
+    // Browser Back/Forward moves between steps; Forward only when every step before the target is valid
     const onPop = () => {
-      const target = window.location.hash.replace('#', '') as StepId;
-      if (STEPS.includes(target) && STEPS.indexOf(target) <= STEPS.indexOf(step)) setStep(target);
+      const target = (window.location.hash.replace('#', '') || STEPS[0]) as StepId;
+      if (!STEPS.includes(target) || target === step) return;
+      const t = STEPS.indexOf(target);
+      if (t < STEPS.indexOf(step) || STEPS.slice(0, t).every((s) => !hasErrors(validateStep(s, values, secrets)))) setStep(target);
+      else window.history.replaceState({ step }, '', `#${step}`);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, [step]);
+  }, [step, values, secrets]);
 
   const set = useCallback(<K extends keyof RegistrationValues>(key: K, value: RegistrationValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -318,6 +326,8 @@ export function RegistrationWizard() {
 
           {existing ? (
             <ExistingAccount user={existing} onSignOut={async () => { await signOut(); setExisting(null); }} />
+          ) : checkingSession ? (
+            <p role="status" className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Checking your account…</p>
           ) : (
             <>
               {/* progress */}

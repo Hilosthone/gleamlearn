@@ -26,7 +26,11 @@ Two independent problems; both must be fixed before the deployed journey can wor
 
 ## Not verified
 
-- Browser-level end-to-end runs: no browser automation was available. The flows are verified at the module and HTTP level against a running local backend; see `TESTING` in the backend `test/live/README.md`.
+- Registration, verification, onboarding, login, logout and password reset are now browser-tested in headless Chrome against a local backend (`e2e/browser/`, 2026-10-23). Not covered: real mobile devices, screen readers, Safari, Firefox and the production deployment.
+
+## 🟨 Dashboard loads learner stats twice
+
+The Navbar and the dashboard page both call `loadLearnerStats()`, so each dashboard load sends 2 requests each to `/xp`, `/coins` and `/streak`. The backend allows 3 per second per route, so opening the dashboard again within a second gets some 429s, shown as "unavailable" stats. The fix is to share one query (for example, through the session provider). It isn't changed yet because it's outside the registration work.
 
 ## 🟧 Registration: backend gaps (see `docs/REGISTRATION.md` → "Backend gaps")
 
@@ -34,3 +38,4 @@ Two independent problems; both must be fixed before the deployed journey can wor
 - **`GET /examinations` requires sign-in,** so the wizard can't list the real supported exams.
 - **No onboarding-completed flag:** onboarding infers what's missing from profile fields.
 - **No age or minors policy:** this is a product and legal decision, not invented here.
+- **A password mismatch returns 409,** the same status as "already registered". The frontend tells them apart by the message.

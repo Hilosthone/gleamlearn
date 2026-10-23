@@ -667,3 +667,31 @@ The UI maps responses by status, with message checks only where the backend uses
 - There's no onboarding-completed flag.
 - There's no age or minors policy.
 - Signup body allowlisting needs confirming on the backend.
+
+## Batch 27 (2026-10-23): Registration verified in a real browser, and four defects fixed
+
+### Fixes
+
+- **409 "Passwords do not match"** (`src/lib/registration/submit.ts`): this is now a field error on the security step instead of "account already exists". There's one new unit test.
+- **Browser Back from step 2** (`RegistrationWizard.tsx`): step 1 has no URL hash, so Back did nothing before. Forward is now allowed when every earlier step is valid; otherwise the address is restored.
+- **Signed-in learner on `/auth/signup`** (`RegistrationWizard.tsx`): "Checking your account…" is shown while `GET /auth/me` runs, instead of the empty form.
+- **Onboarding** (`src/app/onboarding/page.tsx`): "Loading your profile…" is shown until the plan is known. Before, all 6 steps were shown until `/auth/me` answered, so on a slow backend the learner could re-answer sign-up questions.
+- **Dashboard Sidebar "Log Out"** (`src/components/layout/Sidebar.tsx`): it now calls `signOut()`. Before, it only navigated to `/auth/login` and left the token, so the learner stayed signed in.
+
+### New
+
+`e2e/browser/` (`cdp.mjs`, `registration.mjs`, `README.md`): headless-Chrome tests over the DevTools Protocol, with no dependencies, refusing deployed URLs.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Browser suite against a local backend | ✅ **23/23**, plus 1 warning (dashboard stats 429 on rapid re-navigation; see `KNOWN_ISSUES.md`) |
+| `npm test` | ✅ 102/102 |
+| `npx tsc --noEmit -p .` | ✅ |
+| eslint `src` + `e2e` | 417 errors / 87 warnings, **unchanged baseline** (0 in new or changed files) |
+| `npx next build` | ✅ |
+
+### Re-verified on the backend (read-only)
+
+`AuthService.signup` maps each field explicitly, so unknown fields are ignored. This resolves gap 5.

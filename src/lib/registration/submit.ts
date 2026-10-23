@@ -6,7 +6,7 @@
  * Outcomes (real backend behaviour):
  *   201 → account created; the response carries a session token and verificationEmail (sent/pending/failed)
  *   400 → validation errors (class-validator messages) → mapped to fields/steps
- *   409 → "Email or username is already registered"
+ *   409 → "Email or username is already registered" — or "Passwords do not match" (same status, told apart by message)
  *   429 → throttled (sign-up allows 2/s, 10/min per IP)
  *   network failure / timeout → OUTCOME UNKNOWN: the account may or may not exist.
  * For an unknown outcome we never blindly resend. `reconcile()` tries to sign in with the same credentials
@@ -71,6 +71,10 @@ export async function submitRegistration(body: SignupBody): Promise<SubmitResult
     if (e.status === 400) {
       const mapped = mapValidationErrors(e);
       return { kind: 'invalid', message: 'Some details need attention.', ...mapped };
+    }
+    // The backend also answers a password mismatch with 409 ConflictException('Passwords do not match')
+    if (e.status === 409 && /passwords? do not match/i.test(e.message)) {
+      return { kind: 'invalid', message: 'Some details need attention.', fieldErrors: { confirmPassword: 'Passwords do not match.' }, step: 'security' };
     }
     if (e.status === 409) {
       return { kind: 'exists', message: 'This email or username is already registered. Sign in instead, or use a different email and username.' };

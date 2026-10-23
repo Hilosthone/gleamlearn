@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import { signOut } from '@/lib/learner-auth';
 import { 
   Bell,
   LayoutDashboard, 
@@ -44,9 +45,9 @@ export default function Sidebar() {
     { name: 'Help & Support', href: '/support', icon: HelpCircle },
   ];
 
-  const handleLogout = () => {
-    // Perform any auth state cleanup here if necessary, then redirect
-    router.push('/auth/login');
+  const handleLogout = async () => {
+    await signOut(); // deletes the learner token (the backend logout is stateless)
+    router.replace('/auth/login');
   };
 
   return (
