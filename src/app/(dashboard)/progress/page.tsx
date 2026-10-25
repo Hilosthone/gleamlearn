@@ -1,75 +1,77 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Trophy, 
-  Flame, 
-  Coins, 
-  Award, 
-  TrendingUp, 
-  BarChart3, 
-  Zap, 
-  Star, 
-  Globe, 
-  GraduationCap, 
-  Building2, 
-  Users, 
-  BookOpen, 
-  CheckCircle2, 
-  Lock, 
-  Clock, 
-  ArrowUpRight, 
-  ShieldCheck,
-  CalendarDays,
-  Sparkles
-} from 'lucide-react';
+import Link from 'next/link';
+import { Trophy, Flame, Coins, Award, TrendingUp, Zap, BookOpen, CheckCircle2, Lock, Clock, CalendarDays, Shield } from 'lucide-react';
+import { useApiQuery } from '@/hooks/useApiQuery';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
+import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
+import { listEnrolledCourses, sharedLearnerStats } from '@/lib/learning';
+import { relativeTime } from '@/lib/notifications';
+import {
+  calendarMonth,
+  canRecoverStreak,
+  checkInToday,
+  humanizeSource,
+  loadAchievements,
+  loadBadges,
+  loadCheckInDates,
+  loadCoinLedger,
+  loadLeaderboard,
+  loadStudyStats,
+  loadXpLedger,
+  recoverStreak,
+  type LeaderboardScope,
+  type LedgerEntry,
+} from '@/lib/gamification';
 
-type GamificationView = 'dashboard' | 'xp' | 'coins' | 'achievements' | 'streak' | 'leaderboard';
+type View = 'dashboard' | 'xp' | 'coins' | 'achievements' | 'streak' | 'leaderboard';
 
+const panel = 'bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
+
+/**
+ * Real progress, XP, coins, achievements, streak and leaderboards. Previously every number on this page was
+ * invented ("Level 42 Scholar", "88.4% mastery", "142.5 hrs", a fixed leaderboard and calendar).
+ */
 export default function ProgressGamificationHub() {
-  const [activeView, setActiveView] = useState<GamificationView>('dashboard');
-  
-  // Leaderboard state
-  const [leaderboardTab, setLeaderboardTab] = useState<'global' | 'school' | 'university' | 'department' | 'course' | 'friends'>('global');
-  const [leaderboardFilter, setLeaderboardFilter] = useState<'daily' | 'weekly' | 'monthly' | 'all-time'>('weekly');
-
+  const [view, setView] = useState<View>('dashboard');
   return (
     <div className="w-full min-h-screen pb-16 space-y-8 animate-in fade-in duration-300">
-      
-      {/* Navigation Sub-Header / View Switcher */}
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-4 sm:px-8 sm:py-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-2xl bg-amber-500/10 text-[#F97316] border border-amber-200/50">
-            <Trophy className="w-6 h-6" />
+            <Trophy className="w-6 h-6" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">Progress & Gamification Hub</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Track mastery metrics, XP levels, rewards, streaks, and global rankings.</p>
+            <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">Progress</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Your courses, study time, XP, coins, achievements, streak and rankings.</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
+        <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0" role="tablist">
           {[
-            { id: 'dashboard', label: 'Progress Dashboard', icon: TrendingUp },
+            { id: 'dashboard', label: 'Overview', icon: TrendingUp },
             { id: 'xp', label: 'XP & Level', icon: Zap },
             { id: 'coins', label: 'Coins', icon: Coins },
             { id: 'achievements', label: 'Achievements', icon: Award },
             { id: 'streak', label: 'Streak', icon: Flame },
             { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
           ].map((v) => {
-            const Icon = v.icon;
-            const isActive = activeView === v.id;
+            const isActive = view === v.id;
             return (
               <button
                 key={v.id}
-                onClick={() => setActiveView(v.id as any)}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setView(v.id as View)}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-[#7C3AED] text-white shadow-md shadow-purple-500/20'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  isActive ? 'bg-[#7C3AED] text-white shadow-md shadow-purple-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <v.icon className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{v.label}</span>
               </button>
             );
@@ -77,411 +79,351 @@ export default function ProgressGamificationHub() {
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* 47. PROGRESS DASHBOARD PAGE                                */}
-      {/* ========================================================= */}
-      {activeView === 'dashboard' && (
-        <div className="space-y-8">
-          {/* Top Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Overall Mastery</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#10B981]">88.4%</h3>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                <ArrowUpRight className="w-3.5 h-3.5" /> +4.2% from last week
-              </p>
-            </div>
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Total Study Time</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#2563EB]">142.5 hrs</h3>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-bold">18 hrs this week</p>
-            </div>
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Quiz & Test Average</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#7C3AED]">94.1%</h3>
-              <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">24 Tests Completed</p>
-            </div>
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Exam Readiness</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-[#F97316]">A+ Grade</h3>
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-bold">High probability of distinction</p>
-            </div>
-          </div>
+      {view === 'dashboard' && <Overview />}
+      {view === 'xp' && <XpView />}
+      {view === 'coins' && <CoinsView />}
+      {view === 'achievements' && <AchievementsView />}
+      {view === 'streak' && <StreakView />}
+      {view === 'leaderboard' && <LeaderboardView />}
+    </div>
+  );
+}
 
-          {/* Performance Breakdown Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-6">
-              <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Course & Subject Performance</h3>
-              <div className="space-y-4">
-                {[
-                  { name: 'Physics 401 (Electromagnetism)', score: 92, color: 'bg-[#2563EB]' },
-                  { name: 'Advanced Calculus IV', score: 85, color: 'bg-[#7C3AED]' },
-                  { name: 'Quantum Mechanics', score: 90, color: 'bg-[#10B981]' },
-                  { name: 'Linear Algebra & Matrices', score: 78, color: 'bg-[#F97316]' },
-                ].map((c, i) => (
-                  <div key={i} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-gray-800 dark:text-gray-200">
-                      <span>{c.name}</span>
-                      <span>{c.score}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
-                      <div className={`${c.color} h-full rounded-full`} style={{ width: `${c.score}%` }}></div>
-                    </div>
+function Stat({ label, value, icon: Icon, color }: { label: string; value: string; icon: typeof Zap; color: string }) {
+  return (
+    <div className={`${panel} space-y-2`}>
+      <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+        <Icon className={`w-3.5 h-3.5 ${color}`} aria-hidden="true" /> {label}
+      </span>
+      <p className="text-2xl font-black text-gray-900 dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+const fmt = (v: number | undefined | null, unit = '') => (v === undefined || v === null ? '—' : `${v.toLocaleString()}${unit}`);
+
+function Overview() {
+  const stats = useApiQuery(() => sharedLearnerStats(), []);
+  const study = useApiQuery(() => loadStudyStats(), []);
+  const courses = useApiQuery(() => listEnrolledCourses(), []);
+  const hours = study.data ? Math.round((study.data.minutes / 60) * 10) / 10 : undefined;
+  const completed = courses.data?.filter((c) => (c.progressPercentage ?? 0) >= 100).length;
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Stat label="Courses completed" value={completed === undefined ? '—' : `${completed} of ${courses.data!.length}`} icon={CheckCircle2} color="text-emerald-500" />
+        <Stat label="Study time" value={fmt(hours, ' h')} icon={Clock} color="text-blue-500" />
+        <Stat label="Study sessions" value={fmt(study.data?.sessions)} icon={BookOpen} color="text-purple-500" />
+        <Stat label="Level" value={stats.data?.xp ? `Level ${stats.data.xp.level}` : '—'} icon={Zap} color="text-amber-500" />
+      </div>
+
+      <section className={`${panel} space-y-4`} aria-labelledby="courses-progress">
+        <h2 id="courses-progress" className="text-sm font-extrabold text-gray-900 dark:text-white">Course progress</h2>
+        {courses.isLoading ? (
+          <LoadingState layout="list" rows={3} />
+        ) : courses.error && !courses.data ? (
+          <ErrorState error={courses.error} onRetry={courses.retry} />
+        ) : !courses.data?.length ? (
+          <EmptyState icon={BookOpen} title="No courses yet" description="Enrol in a course to see your progress here." action={<Link href="/learn" className="text-xs font-semibold text-[var(--color-brand-blue)] underline">Browse courses</Link>} />
+        ) : (
+          <ul className="space-y-4">
+            {courses.data.map((c) => {
+              const pct = Math.round(Math.min(100, Math.max(0, c.progressPercentage ?? 0)));
+              return (
+                <li key={c.id}>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <Link href={`/learn/${encodeURIComponent(c.id)}`} className="font-bold text-gray-900 dark:text-white hover:underline">{c.title}</Link>
+                    <span className="font-bold tabular-nums text-gray-500">{pct}%</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${c.title} progress`}>
+                    <div className="h-full bg-[#7C3AED]" style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="text-[11px] text-gray-400">Progress is the share of the lessons in a course you have completed.</p>
+      </section>
+    </div>
+  );
+}
 
-            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-6">
-              <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Weak vs Strong Topics</h3>
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
-                  <span className="text-[10px] font-bold text-[#10B981] uppercase">Strong Topics</span>
-                  <p className="text-xs font-bold text-gray-900 dark:text-white">Faraday's Law, Vector Fields, Schrödinger Equation Basics</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-2">
-                  <span className="text-[10px] font-bold text-[#EF4444] uppercase">Topics Needing Practice</span>
-                  <p className="text-xs font-bold text-gray-900 dark:text-white">Tensor Transformations, Eigenvalue Multiplicities, Tunneling Probability</p>
-                </div>
-              </div>
+function Ledger({ query, unit, emptyTitle, emptyText }: { query: ReturnType<typeof useApiQuery<LedgerEntry[]>>; unit: string; emptyTitle: string; emptyText: string }) {
+  if (query.isLoading) return <LoadingState layout="list" rows={4} />;
+  if (query.error && !query.data) return <ErrorState error={query.error} onRetry={query.retry} />;
+  if (!query.data?.length) return <EmptyState icon={Award} title={emptyTitle} description={emptyText} />;
+  return (
+    <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+      {query.data.map((e) => (
+        <li key={e.id} className="py-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold text-gray-900 dark:text-white">{e.description || humanizeSource(e.source)}</p>
+            <p className="text-[11px] text-gray-400">{humanizeSource(e.source)} · <time dateTime={e.at}>{relativeTime(e.at)}</time></p>
+          </div>
+          <span className={`text-xs font-black tabular-nums ${e.amount < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+            {e.amount > 0 ? '+' : ''}{e.amount} {unit}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function XpView() {
+  const stats = useApiQuery(() => sharedLearnerStats(), []);
+  const ledger = useApiQuery(() => loadXpLedger(), []);
+  const xp = stats.data?.xp;
+  const pct = xp && xp.nextLevelXp > 0 ? Math.round((xp.currentXp / xp.nextLevelXp) * 100) : 0;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${panel} space-y-4`}>
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Level</h2>
+        {stats.isLoading ? (
+          <LoadingState layout="detail" />
+        ) : xp ? (
+          <>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">Level {xp.level}</p>
+            <p className="text-xs text-gray-500">{xp.totalXp.toLocaleString()} XP in total</p>
+            <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progress to the next level">
+              <div className="h-full bg-amber-500" style={{ width: `${pct}%` }} />
             </div>
+            <p className="text-[11px] text-gray-400">{xp.currentXp} / {xp.nextLevelXp} XP to level {xp.level + 1}</p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">XP is not available right now.</p>
+        )}
+      </div>
+      <div className={`${panel} lg:col-span-2 space-y-2`}>
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">XP history</h2>
+        <Ledger query={ledger} unit="XP" emptyTitle="No XP yet" emptyText="You earn XP by completing quizzes." />
+      </div>
+    </div>
+  );
+}
+
+function CoinsView() {
+  const stats = useApiQuery(() => sharedLearnerStats(), []);
+  const ledger = useApiQuery(() => loadCoinLedger(), []);
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${panel} space-y-3`}>
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Balance</h2>
+        <p className="text-3xl font-black text-gray-900 dark:text-white">{fmt(stats.data?.coins?.balance)}</p>
+        <p className="text-[11px] text-gray-400">Coins are awarded by the platform when you complete quizzes.</p>
+      </div>
+      <div className={`${panel} lg:col-span-2 space-y-2`}>
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Coin history</h2>
+        <Ledger query={ledger} unit="coins" emptyTitle="No coin activity yet" emptyText="Coins you earn or spend will be listed here." />
+      </div>
+    </div>
+  );
+}
+
+function AchievementsView() {
+  const achievements = useApiQuery(() => loadAchievements(), []);
+  const badges = useApiQuery(() => loadBadges(), []);
+  return (
+    <div className="space-y-8">
+      <section className={`${panel} space-y-4`} aria-labelledby="ach-heading">
+        <h2 id="ach-heading" className="text-sm font-extrabold text-gray-900 dark:text-white">
+          Achievements {achievements.data && <span className="text-gray-400 font-bold">({achievements.data.filter((a) => a.unlockedAt).length} of {achievements.data.length} unlocked)</span>}
+        </h2>
+        {achievements.isLoading ? (
+          <LoadingState layout="cards" rows={3} />
+        ) : achievements.error && !achievements.data ? (
+          <ErrorState error={achievements.error} onRetry={achievements.retry} />
+        ) : !achievements.data?.length ? (
+          <EmptyState icon={Award} title="No achievements available yet" description="Achievements will appear here once they are added." />
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {achievements.data.map((a) => (
+              <li key={a.id} className={`p-4 rounded-2xl border ${a.unlockedAt ? 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900/50' : 'border-gray-200 dark:border-gray-800 opacity-75'}`}>
+                <div className="flex items-center gap-2">
+                  {a.unlockedAt ? <Award className="w-4 h-4 text-amber-500" aria-hidden="true" /> : <Lock className="w-4 h-4 text-gray-400" aria-hidden="true" />}
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">{a.title}</h3>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">{a.description}</p>
+                <p className="text-[10px] text-gray-400 mt-2">
+                  {a.unlockedAt ? `Unlocked ${relativeTime(a.unlockedAt)}` : 'Locked'}
+                  {(a.rewardXp > 0 || a.rewardCoins > 0) && ` · ${[a.rewardXp > 0 && `${a.rewardXp} XP`, a.rewardCoins > 0 && `${a.rewardCoins} coins`].filter(Boolean).join(', ')}`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className={`${panel} space-y-4`} aria-labelledby="badge-heading">
+        <h2 id="badge-heading" className="text-sm font-extrabold text-gray-900 dark:text-white">Badges</h2>
+        {badges.isLoading ? (
+          <LoadingState layout="cards" rows={2} />
+        ) : badges.error && !badges.data ? (
+          <ErrorState error={badges.error} onRetry={badges.retry} />
+        ) : !badges.data?.length ? (
+          <EmptyState icon={Shield} title="No badges available yet" description="Badges will appear here once they are added." />
+        ) : (
+          <ul className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {badges.data.map((b) => (
+              <li key={b.id} className={`p-4 rounded-2xl border text-center ${b.earnedAt ? 'border-purple-200 dark:border-purple-900/50' : 'border-gray-200 dark:border-gray-800 opacity-60'}`}>
+                <Shield className={`w-6 h-6 mx-auto ${b.earnedAt ? 'text-purple-500' : 'text-gray-400'}`} aria-hidden="true" />
+                <p className="text-xs font-bold text-gray-900 dark:text-white mt-2">{b.name}</p>
+                <p className="text-[10px] text-gray-400">{b.earnedAt ? 'Earned' : b.criteria || 'Not earned yet'}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function StreakView() {
+  // Shared with the Navbar (one GET /streak); check-in and recovery invalidate it for both
+  const status = useApiQuery(() => sharedLearnerStats(), []);
+  const dates = useApiQuery(() => loadCheckInDates(), []);
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getUTCFullYear(), month: now.getUTCMonth() };
+  });
+  const refresh = () => {
+    status.retry();
+    dates.retry();
+  };
+  const checkIn = useAsyncAction(async () => {
+    await checkInToday();
+    refresh();
+  });
+  const recover = useAsyncAction(async () => {
+    await recoverStreak();
+    refresh();
+  });
+  const s = status.data?.streak ?? null;
+  const cells = calendarMonth(dates.data ?? [], month.year, month.month);
+  const monthLabel = new Date(Date.UTC(month.year, month.month, 1)).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const shift = (delta: number) => setMonth(({ year, month: m }) => ({ year: m + delta < 0 ? year - 1 : m + delta > 11 ? year + 1 : year, month: (m + delta + 12) % 12 }));
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${panel} space-y-4`}>
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Your streak</h2>
+        {status.isLoading ? (
+          <LoadingState layout="detail" />
+        ) : !s ? (
+          status.error ? <ErrorState error={status.error} onRetry={status.retry} /> : <p className="text-xs text-gray-500">Your streak is not available right now.</p>
+        ) : (
+          <>
+            <p className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <Flame className="w-7 h-7 text-orange-500" aria-hidden="true" /> {s.currentStreak} {s.currentStreak === 1 ? 'day' : 'days'}
+            </p>
+            <p className="text-xs text-gray-500">Longest: {s.longestStreak} days · Recovery tokens: {s.recoveryTokens}</p>
+            {s.checkedInToday ? (
+              <Alert variant="success">You have checked in today.</Alert>
+            ) : (
+              <Button type="button" variant="orange" size="md" isLoading={checkIn.isPending} onClick={() => void checkIn.run()}>
+                Check in for today
+              </Button>
+            )}
+            {canRecoverStreak(s) && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-500">Your streak was broken. You can use a recovery token to keep it.</p>
+                <Button type="button" variant="outline" size="sm" isLoading={recover.isPending} onClick={() => void recover.run()}>
+                  Use a recovery token
+                </Button>
+              </div>
+            )}
+            {(checkIn.error || recover.error) && <ErrorState error={(checkIn.error ?? recover.error)!} compact />}
+          </>
+        )}
+      </div>
+      <div className={`${panel} lg:col-span-2 space-y-4`}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" aria-hidden="true" /> {monthLabel}
+          </h2>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous month">‹</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next month">›</Button>
           </div>
         </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 48. XP & LEVEL PAGE                                      */}
-      {/* ========================================================= */}
-      {activeView === 'xp' && (
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="bg-gradient-to-r from-purple-950 via-[#111827] to-[#111827] p-8 rounded-3xl border border-purple-900/40 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-3 text-center md:text-left">
-              <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-700/50">
-                Academic Rank
+        {dates.isLoading ? (
+          <LoadingState layout="cards" rows={1} />
+        ) : dates.error && !dates.data ? (
+          <ErrorState error={dates.error} onRetry={dates.retry} />
+        ) : (
+          <div className="grid grid-cols-7 gap-1.5 text-center" role="grid" aria-label={`Check-ins in ${monthLabel}`}>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+              <span key={d} className="text-[10px] font-bold text-gray-400" role="columnheader">{d}</span>
+            ))}
+            {cells.map((c, i) => (
+              <span
+                key={c.date ?? `blank-${i}`}
+                role="gridcell"
+                aria-label={c.date ? `${c.date}${c.checkedIn ? ', checked in' : ''}` : undefined}
+                className={`h-9 rounded-lg text-xs flex items-center justify-center ${c.day === null ? '' : c.checkedIn ? 'bg-orange-500 text-white font-bold' : 'bg-gray-50 dark:bg-gray-900 text-gray-500'}`}
+              >
+                {c.day ?? ''}
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">Level 42 Scholar</h2>
-              <p className="text-xs text-purple-200">14,250 XP earned • 750 XP required for Level 43</p>
-            </div>
-            <div className="w-full md:w-64 space-y-2">
-              <div className="flex justify-between text-xs font-bold text-purple-200">
-                <span>Progress to Level 43</span>
-                <span>95%</span>
-              </div>
-              <div className="w-full bg-purple-950/80 h-3 rounded-full overflow-hidden border border-purple-800">
-                <div className="bg-gradient-to-r from-purple-500 to-amber-400 h-full rounded-full" style={{ width: '95%' }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-6">
-            <h3 className="text-base font-extrabold text-gray-900 dark:text-white">XP History & Recent Rewards</h3>
-            <div className="space-y-3">
-              {[
-                { action: 'Completed AI Classroom Quiz on Electromagnetism', xp: '+250 XP', time: '2 hours ago', tag: 'Quiz' },
-                { action: 'Maintained 14-Day Study Streak', xp: '+500 XP', time: 'Today', tag: 'Streak' },
-                { action: 'Solved 10 Vector Calculus Practice Problems', xp: '+180 XP', time: 'Yesterday', tag: 'Practice' },
-                { action: 'Mastered Physics 401 Module 2', xp: '+400 XP', time: '2 days ago', tag: 'Mastery' },
-              ].map((item, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{item.action}</h4>
-                      <p className="text-[11px] text-gray-400">{item.time}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-[#10B981] bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200/50 whitespace-nowrap">
-                    {item.xp}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 49. COINS PAGE                                           */}
-      {/* ========================================================= */}
-      {activeView === 'coins' && (
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="bg-gradient-to-r from-amber-950 via-[#111827] to-[#111827] p-8 rounded-3xl border border-amber-900/40 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center md:text-left">
-              <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-700/50">
-                Wallet Balance
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-amber-400 flex items-center justify-center md:justify-start gap-2">
-                <Coins className="w-8 h-8" /> 2,840 Coins
-              </h2>
-              <p className="text-xs text-amber-200">Redeem coins for premium templates, AI tutor sessions, or scholarship grants.</p>
-            </div>
-            <button className="px-6 py-3 rounded-2xl bg-[#F97316] text-white font-bold text-xs shadow-lg hover:bg-orange-600 transition-all">
-              Spend Coins / Rewards Store
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-              <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Ways to Earn Coins</h3>
-              <ul className="space-y-3 text-xs text-gray-600 dark:text-gray-300">
-                <li className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-                  <span>Complete daily study sessions</span>
-                  <strong className="text-amber-500">+50 Coins</strong>
-                </li>
-                <li className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-                  <span>Score 90%+ on any quiz</span>
-                  <strong className="text-amber-500">+100 Coins</strong>
-                </li>
-                <li className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-                  <span>Maintain a 7-day streak</span>
-                  <strong className="text-amber-500">+300 Coins</strong>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-              <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Coin Transaction History</h3>
-              <div className="space-y-3">
-                {[
-                  { desc: 'Daily Login Reward', amount: '+50', time: 'Today' },
-                  { desc: 'Quiz Excellence Bonus', amount: '+100', time: 'Yesterday' },
-                  { desc: 'Unlocked Theme Skin', amount: '-500', time: '3 days ago' },
-                ].map((tx, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs">
-                    <div>
-                      <p className="font-bold text-gray-900 dark:text-white">{tx.desc}</p>
-                      <p className="text-[10px] text-gray-400">{tx.time}</p>
-                    </div>
-                    <span className={`font-black ${tx.amount.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.amount} Coins</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 50. ACHIEVEMENTS PAGE                                    */}
-      {/* ========================================================= */}
-      {activeView === 'achievements' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Achievements & Badges</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Unlock prestigious badges by hitting academic and consistency milestones.</p>
-            </div>
-            <span className="text-xs font-bold text-[#7C3AED] bg-purple-50 dark:bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-200">
-              18 / 25 Unlocked
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: 'Quantum Master', desc: 'Score 95%+ in Quantum Mechanics module tests', unlocked: true, progress: 100 },
-              { title: 'Streak Titan', desc: 'Maintain an unbroken 30-day study streak', unlocked: true, progress: 100 },
-              { title: 'Calculus Wizard', desc: 'Solve 100 advanced calculus problems', unlocked: false, progress: 78 },
-              { title: 'Night Owl Scholar', desc: 'Complete 20 late-night study sessions after 10 PM', unlocked: true, progress: 100 },
-              { title: 'AI Curriculum Pioneer', desc: 'Generate and complete 5 custom AI study plans', unlocked: false, progress: 60 },
-              { title: 'Global Elite', desc: 'Reach the Top 10 on the Global Leaderboard', unlocked: false, progress: 40 },
-            ].map((ach, idx) => (
-              <div key={idx} className={`p-6 rounded-3xl border space-y-4 ${ach.unlocked ? 'bg-white dark:bg-[#111827] border-purple-500/30 shadow-xs' : 'bg-gray-50/50 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800 opacity-80'}`}>
-                <div className="flex items-center justify-between">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${ach.unlocked ? 'bg-[#7C3AED] text-white shadow-md shadow-purple-500/30' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
-                    {ach.unlocked ? <Award className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${ach.unlocked ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200' : 'bg-gray-200 dark:bg-gray-800 text-gray-500'}`}>
-                    {ach.unlocked ? 'Unlocked' : `${ach.progress}% Progress`}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-gray-900 dark:text-white">{ach.title}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ach.desc}</p>
-                </div>
-                {!ach.unlocked && (
-                  <div className="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-[#7C3AED] h-full rounded-full" style={{ width: `${ach.progress}%` }}></div>
-                  </div>
-                )}
-              </div>
             ))}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardView() {
+  const session = useOptionalLearnerSession();
+  const country = (session?.user.country as string | undefined) || '';
+  const [scope, setScope] = useState<LeaderboardScope>('weekly');
+  const board = useApiQuery(() => loadLeaderboard(scope, country), [scope, country]);
+  const myId = session?.user.id;
+  const scopes: { id: LeaderboardScope; label: string; disabled?: boolean }[] = [
+    { id: 'weekly', label: 'This week' },
+    { id: 'monthly', label: 'This month' },
+    { id: 'global', label: 'All time' },
+    { id: 'country', label: country ? country : 'My country', disabled: !country },
+  ];
+  return (
+    <div className={`${panel} space-y-4`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Leaderboard (XP)</h2>
+        <div className="flex gap-2 flex-wrap" role="tablist">
+          {scopes.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={scope === s.id}
+              disabled={s.disabled}
+              title={s.disabled ? 'Add your country in your profile to see this board' : undefined}
+              onClick={() => setScope(s.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-40 ${scope === s.id ? 'bg-[#7C3AED] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 51. STREAK PAGE                                          */}
-      {/* ========================================================= */}
-      {activeView === 'streak' && (
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="bg-gradient-to-br from-[#7C3AED] to-purple-900 text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center md:text-left">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">Streak Shield Active</span>
-              <h2 className="text-3xl sm:text-4xl font-black flex items-center justify-center md:justify-start gap-2">
-                <Flame className="w-8 h-8 text-amber-300 fill-amber-300" /> 14 Days Streak
-              </h2>
-              <p className="text-xs text-purple-100">Personal Longest Streak: <strong className="text-white">28 Days</strong></p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
-              <p className="text-xs font-bold text-amber-300">Next Milestone</p>
-              <p className="text-sm font-black mt-0.5">21 Days (+300 Coins)</p>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-6">
-            <h3 className="text-base font-extrabold text-gray-900 dark:text-white">September 2026 Streak Calendar</h3>
-            <div className="grid grid-cols-7 gap-2 text-center">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                <div key={d} className="text-xs font-bold text-gray-400 py-1">{d}</div>
-              ))}
-              {Array.from({ length: 30 }).map((_, i) => {
-                const day = i + 1;
-                const active = day <= 23 && day !== 19;
-                const missed = day === 19;
-                return (
-                  <div key={day} className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 ${
-                    active ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-400' :
-                    missed ? 'bg-rose-500/10 border-rose-500/40 text-rose-500' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-400'
-                  }`}>
-                    <span>{day}</span>
-                    {active && <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />}
-                    {missed && <span className="text-[9px]">Missed</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-            <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Streak Recovery Opportunity</h3>
-            <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-gray-900 dark:text-white">Missed session on Sep 19 recovered via Quiz Challenge</p>
-                <p className="text-[11px] text-gray-400">Streak shield successfully applied.</p>
-              </div>
-              <span className="text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-xl border border-amber-200">
-                Protected
+      </div>
+      {board.isLoading ? (
+        <LoadingState layout="table" rows={5} />
+      ) : board.error && !board.data ? (
+        <ErrorState error={board.error} onRetry={board.retry} />
+      ) : !board.data?.length ? (
+        <EmptyState icon={Trophy} title="No rankings yet" description="Learners appear here once they earn XP in this period." />
+      ) : (
+        <ol className="divide-y divide-gray-100 dark:divide-gray-800">
+          {board.data.map((e) => (
+            <li key={e.userId} className={`py-3 flex items-center justify-between ${e.userId === myId ? 'font-black text-[#7C3AED]' : ''}`}>
+              <span className="flex items-center gap-3 text-xs">
+                <span className="w-7 text-right tabular-nums font-black text-gray-400">#{e.rank}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{e.name}{e.userId === myId ? ' (you)' : ''}</span>
               </span>
-            </div>
-          </div>
-        </div>
+              <span className="text-xs font-black tabular-nums">{e.totalXp.toLocaleString()} XP</span>
+            </li>
+          ))}
+        </ol>
       )}
-
-      {/* ========================================================= */}
-      {/* 52. LEADERBOARD PAGE ⭐                                  */}
-      {/* ========================================================= */}
-      {activeView === 'leaderboard' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-6">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-              <div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-[#F97316] border border-amber-200">
-                  Global Rankings
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-2">Scholar Leaderboard</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Compare your XP and academic performance across categories.</p>
-              </div>
-
-              {/* Time Filters */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-                {[
-                  { id: 'daily', label: 'Daily' },
-                  { id: 'weekly', label: 'Weekly' },
-                  { id: 'monthly', label: 'Monthly' },
-                  { id: 'all-time', label: 'All-time' },
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setLeaderboardFilter(f.id as any)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                      leaderboardFilter === f.id
-                        ? 'bg-[#F97316] text-white shadow-md'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tabs: Global, School, University, Department, Course, Friends */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-gray-800">
-              {[
-                { id: 'global', label: 'Global', icon: Globe },
-                { id: 'school', label: 'School', icon: Building2 },
-                { id: 'university', label: 'University', icon: GraduationCap },
-                { id: 'department', label: 'Department', icon: BookOpen },
-                { id: 'course', label: 'Course', icon: Zap },
-                { id: 'friends', label: 'Friends', icon: Users },
-              ].map(tab => {
-                const Icon = tab.icon;
-                const isActive = leaderboardTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setLeaderboardTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
-                      isActive
-                        ? 'bg-amber-500/10 text-[#F97316] border border-amber-200 dark:border-amber-900/50'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Leaderboard Table */}
-            <div className="space-y-3">
-              {[
-                { rank: 1, name: 'Draco Vance', xp: '24,850 XP', level: 'Level 50', badge: '🥇', user: false },
-                { rank: 2, name: 'Elena Rostova', xp: '22,400 XP', level: 'Level 48', badge: '🥈', user: false },
-                { rank: 3, name: 'Kenshi Takahashi', xp: '20,150 XP', level: 'Level 45', badge: '🥉', user: false },
-                { rank: 4, name: 'Aiden Pierce', xp: '18,900 XP', level: 'Level 44', badge: '', user: false },
-                { rank: 5, name: 'Hilosthone Sulyman (You)', xp: '14,250 XP', level: 'Level 42', badge: '⭐', user: true },
-                { rank: 6, name: 'Sarah Jenkins', xp: '13,100 XP', level: 'Level 39', badge: '', user: false },
-              ].map(row => (
-                <div 
-                  key={row.rank} 
-                  className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${
-                    row.user 
-                      ? 'bg-purple-500/10 border-purple-500 dark:border-purple-600 shadow-md ring-2 ring-purple-500/30' 
-                      : 'bg-gray-50/60 dark:bg-gray-900/40 border-gray-200 dark:border-gray-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
-                      row.rank === 1 ? 'bg-amber-400 text-white' :
-                      row.rank === 2 ? 'bg-gray-300 text-gray-800' :
-                      row.rank === 3 ? 'bg-amber-700 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
-                    }`}>
-                      {row.badge || `#${row.rank}`}
-                    </span>
-                    <div>
-                      <h4 className={`text-xs sm:text-sm font-bold ${row.user ? 'text-purple-600 dark:text-purple-400 font-black' : 'text-gray-900 dark:text-white'}`}>
-                        {row.name}
-                      </h4>
-                      <p className="text-[11px] text-gray-400">{row.level}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-xs sm:text-sm font-black text-gray-900 dark:text-white">{row.xp}</span>
-                    {row.user && <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400">Your Current Position</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

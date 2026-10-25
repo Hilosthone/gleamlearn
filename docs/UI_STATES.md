@@ -17,6 +17,7 @@ _Last updated: 2026-10-12 (Batch 17)._
 | `<SlowNotice />` | A calm "taking longer than usual, no need to resend" message. |
 | `<EmptyState title description action />` | Explains the empty result and offers the next action. |
 | `<ErrorState error onRetry signInHref compact />` | Error card or compact banner, with the recovery action matched to `error.kind`. |
+| `<FeatureUnavailable title description action />` | A feature that isn't built yet: a neutral card, no retry, never simulated progress or success. `ErrorState` renders it automatically for a backend **501** (`error.kind === 'not_implemented'`, code `FEATURE_UNAVAILABLE`). |
 | `<OfflineBanner />` | A global banner while the browser is offline (learner dashboard and admin layouts). |
 | `<ConfirmDialog />` | A native `<dialog>` confirmation for destructive actions, with optional typed confirmation |
 | `<Alert variant="error" \| "success" \| "info" \| "warning" \| "offline" />` | Inline form and status messages (`role="alert"` for errors). |

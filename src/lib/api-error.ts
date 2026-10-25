@@ -21,6 +21,7 @@ export type ApiErrorKind =
   | 'rate_limited' // 429 — wait and retry
   | 'ai_unavailable' // 502 / 503 from the backend — AI or upstream service problem
   | 'timeout' // 504, or the request exceeded the client timeout
+  | 'not_implemented' // 501 — the feature is not available yet (code FEATURE_UNAVAILABLE); retrying never helps
   | 'server' // other 5xx
   | 'network' // no response at all (offline, DNS, CORS, connection refused)
   | 'aborted' // cancelled by the caller
@@ -60,6 +61,7 @@ export function kindFromStatus(status: number): ApiErrorKind {
   if (status === 429) return 'rate_limited';
   if (status === 502 || status === 503) return 'ai_unavailable';
   if (status === 504) return 'timeout';
+  if (status === 501) return 'not_implemented';
   if (status >= 500) return 'server';
   return 'unknown';
 }
@@ -96,6 +98,8 @@ export function recoveryHint(kind: ApiErrorKind): string {
       return 'The service is temporarily unavailable. Please try again shortly.';
     case 'network':
       return 'We could not reach GleamLearn. Check your internet connection and try again.';
+    case 'not_implemented':
+      return 'This feature is not available yet.';
     case 'server':
       return 'Something went wrong on our side. Please try again later.';
     default:

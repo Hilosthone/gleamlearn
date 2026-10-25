@@ -6,7 +6,7 @@ import { ArrowRight, Bell, BookOpen, Clock, Coins, Flame, GraduationCap, PenTool
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { QueryState, LoadingState, EmptyState } from '@/components/ui/states';
 import { useLearnerSession } from '@/components/auth/LearnerSessionProvider';
-import { greeting, listEnrolledCourses, loadLearnerStats, recentNotifications, studyMinutes } from '@/lib/learning';
+import { greeting, listEnrolledCourses, recentNotifications, sharedLearnerStats, studyMinutes } from '@/lib/learning';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const { user } = useLearnerSession();
   const name = (user.fullName || user.username || '').split(' ')[0];
 
-  const stats = useApiQuery(() => loadLearnerStats(), []);
+  const stats = useApiQuery(() => sharedLearnerStats(), []); // shared with the Navbar (one request)
   const minutes = useApiQuery(() => studyMinutes().catch(() => null), []);
   const courses = useApiQuery(() => listEnrolledCourses(), []);
   const notifications = useApiQuery(() => recentNotifications(3), []);

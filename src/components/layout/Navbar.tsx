@@ -117,7 +117,8 @@ import { useRouter } from 'next/navigation';
 import { signOut } from '@/lib/learner-auth';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { loadLearnerStats } from '@/lib/learning';
+import { LEARNER_STATS_CHANGED_EVENT, sharedLearnerStats } from '@/lib/learning';
+import { countUnreadNotifications, NOTIFICATIONS_CHANGED_EVENT } from '@/lib/notifications';
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -132,7 +133,21 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   // Identity comes from the backend-confirmed session (GET /auth/me), never from hard-coded sample data
   const session = useOptionalLearnerSession();
   // Real streak / XP / coins for the signed-in learner (the layout persists, so this loads once per visit)
-  const stats = useApiQuery(() => loadLearnerStats(), [], { enabled: Boolean(session) });
+  // Shared with the dashboard page: one request per endpoint instead of two
+  const stats = useApiQuery(() => sharedLearnerStats(), [], { enabled: Boolean(session) });
+  // Real unread count (the dot used to be shown permanently); refreshed when notifications change
+  const unread = useApiQuery(() => countUnreadNotifications(), [], { enabled: Boolean(session) });
+  const retryUnread = unread.retry;
+  useEffect(() => {
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, retryUnread);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, retryUnread);
+  }, [retryUnread]);
+  const unreadCount = unread.data ?? 0;
+  const retryStats = stats.retry;
+  useEffect(() => {
+    window.addEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
+    return () => window.removeEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
+  }, [retryStats]);
   const streakDays = stats.data?.streak?.currentStreak;
   const totalXp = stats.data?.xp?.totalXp;
   const coinBalance = stats.data?.coins?.balance;
@@ -230,10 +245,14 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         </button>
 
         {/* Notification Bell */}
-        <button className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#111827]" />
-        </button>
+        <Link
+          href="/notifications"
+          className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        >
+          <Bell className="w-5 h-5" aria-hidden="true" />
+          {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#111827]" aria-hidden="true" />}
+        </Link>
 
         {/* Profile Avatar & Dropdown */}
         <div className="relative">

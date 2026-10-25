@@ -695,3 +695,22 @@ The UI maps responses by status, with message checks only where the backend uses
 ### Re-verified on the backend (read-only)
 
 `AuthService.signup` maps each field explicitly, so unknown fields are ignored. This resolves gap 5.
+
+## Batch 28 (2026-10-25): Honest "not available yet" states
+
+- **`src/lib/api-error.ts`:** a new kind, `not_implemented`, for HTTP **501** (the backend's `FEATURE_UNAVAILABLE`), with the hint "This feature is not available yet.".
+  - Before, a 501 counted as `server`: transient, with "Something went wrong… try again later".
+- **`src/components/ui/states`:** a new `FeatureUnavailable` (neutral card, no retry). `ErrorState` renders it for `not_implemented`.
+- **Screens that simulated success now say the feature isn't available:**
+  - `library/upload`: the file was discarded, then a fake processing sequence played;
+  - `library/processing`: timed fake steps, ending on a hard-coded class;
+  - `library/generated-class/[classId]`: the same hard-coded class for every id, and "Class regenerated successfully!";
+  - `learn/lesson/[lessonId]/ai-mode`: scripted "AI" replies about AVL trees for every lesson.
+- **Tests:** `src/lib/__tests__/api-error.test.mjs` gains the 501 case.
+
+| Check | Result |
+|---|---|
+| `npm test` | **103/103** |
+| `npx tsc --noEmit` | ✅ |
+| eslint `src` | 417 errors (unchanged baseline) / 63 warnings (was 87: the replaced pages had unused imports). Changed files: clean. |
+| `npx next build` | ✅ |

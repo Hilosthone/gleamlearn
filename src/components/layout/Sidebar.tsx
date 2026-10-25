@@ -36,13 +36,16 @@ export default function Sidebar() {
     { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
     { name: 'Planner', href: '/planner', icon: Calendar },
     { name: 'Progress', href: '/progress', icon: TrendingUp },
+    { name: 'History', href: '/history', icon: History },
+    { name: 'Notifications', href: '/notifications', icon: Bell },
   ];
 
   const bottomNavItems = [
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Settings', href: '/settings', icon: SettingsIcon },
-    { name: 'Help & Support', href: '/support', icon: HelpCircle },
+   { name: 'Help & Support', href: '/support', icon: HelpCircle },
+    // { name: 'Notifications', href: '/notifications', icon: Bell },
+    // { name: 'Settings', href: '/settings', icon: SettingsIcon },
+    // { name: 'Help & Support', href: '/support', icon: HelpCircle },
   ];
 
   const handleLogout = async () => {

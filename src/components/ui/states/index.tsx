@@ -109,6 +109,36 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action, cla
 }
 
 // ---------------------------------------------------------------------------
+// Not available yet
+// ---------------------------------------------------------------------------
+
+interface FeatureUnavailableProps {
+  title: string;
+  /** What is missing, in learner terms. */
+  description: string;
+  /** e.g. a link back to something that does work */
+  action?: React.ReactNode;
+  className?: string;
+}
+
+/**
+ * For features that are not built yet (backend 501 FEATURE_UNAVAILABLE, or screens with no backend support).
+ * Neutral, not an error: it never simulates progress or success and offers no retry.
+ */
+export function FeatureUnavailable({ title, description, action, className = '' }: FeatureUnavailableProps) {
+  return (
+    <div role="status" className={`${card} p-8 flex flex-col items-center text-center gap-3 ${className}`}>
+      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+        <Clock className="w-6 h-6 text-[var(--color-brand-gold)]" aria-hidden="true" />
+      </div>
+      <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">{description}</p>
+      {action && <div className="pt-1">{action}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Error
 // ---------------------------------------------------------------------------
 
@@ -129,6 +159,8 @@ function errorTitle(error: ApiError, isOnline: boolean): string {
       return 'Service temporarily unavailable';
     case 'validation':
       return 'Please check the details';
+    case 'not_implemented':
+      return 'Not available yet';
     default:
       return 'Something went wrong';
   }
@@ -151,6 +183,10 @@ interface ErrorStateProps {
  */
 export function ErrorState({ error, onRetry, signInHref = '/auth/login', compact = false, className = '' }: ErrorStateProps) {
   const isOnline = useOnlineStatus();
+  // 501 FEATURE_UNAVAILABLE is not a failure: say plainly that the feature does not exist yet (no retry)
+  if (isOnline && error.kind === 'not_implemented' && !compact) {
+    return <FeatureUnavailable title={errorTitle(error, isOnline)} description={recoveryHint('not_implemented')} className={className} />;
+  }
   const offline = !isOnline || error.kind === 'network';
   const message = recoveryHint(offline ? 'network' : error.kind) || error.message;
   const canRetry = Boolean(onRetry) && (offline || error.isTransient || error.kind === 'unknown');

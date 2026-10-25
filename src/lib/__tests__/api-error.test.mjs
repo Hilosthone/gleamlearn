@@ -47,3 +47,19 @@ test('a machine-readable code from the backend is kept (account restricted / fro
   assert.equal(apiErrorFromResponse(403, 'Forbidden', { message: 'x' }).code, null);
   assert.equal(apiErrorFromResponse(403, 'Forbidden', { code: 42 }).code, null);
 });
+
+test('501 FEATURE_UNAVAILABLE is "not available yet": not a server fault, not transient, never "try again later"', () => {
+  const err = apiErrorFromResponse(501, 'Not Implemented', {
+    statusCode: 501,
+    error: 'Not Implemented',
+    code: 'FEATURE_UNAVAILABLE',
+    feature: 'PDF export',
+    message: 'PDF export is not available yet: no PDF is generated or stored.',
+  });
+  assert.equal(err.kind, 'not_implemented');
+  assert.equal(err.code, 'FEATURE_UNAVAILABLE');
+  assert.equal(err.isTransient, false);
+  assert.equal(err.message, 'PDF export is not available yet: no PDF is generated or stored.');
+  assert.equal(recoveryHint('not_implemented'), 'This feature is not available yet.');
+  assert.doesNotMatch(recoveryHint('not_implemented'), /try again/i);
+});

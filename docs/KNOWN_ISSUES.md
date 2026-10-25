@@ -21,8 +21,14 @@ Two independent problems; both must be fixed before the deployed journey can wor
 
 ## 🟧 Email delivery
 
-- The sign-up and verify screens now show what the backend reports about the verification email: sent, still on its way, or couldn't be sent.
-- If production SMTP is blocked, learners will see "could not send" instead of a false "we sent you a code". Fixing delivery itself is a backend and hosting decision.
+- The sign-up and verify screens show what the backend reports about the verification email: sent, still on its way, or couldn't be sent.
+- **Production email is blocked until a domain is owned and verified in Resend** (backend `docs/EMAIL.md`). Until then, everyone except the Resend account owner sees "couldn't be sent", which is the honest state.
+
+## 🟧 Screens that are not connected yet (2026-10-25)
+
+- **Now honest:** `/library/upload`, `/library/processing`, `/library/generated-class/[id]` and `/learn/lesson/[id]/ai-mode` used to **simulate** success: a timed fake processing sequence, a hard-coded class, "Class regenerated successfully!", and scripted "AI" replies. They now show `FeatureUnavailable`.
+- **Still static (later batches):** `/library` (its "generated class" cards are invented and lead to the honest screens above), `/ai`, `/practice`, `/exams`, `/progress`, `/history`, `/planner`, `/notifications` and the profile part of `/settings`.
+- **Backend 501 `FEATURE_UNAVAILABLE`** maps to the error kind `not_implemented`. It's not transient, has no "try again", and is never auto-retried.
 
 ## Not verified
 

@@ -64,7 +64,7 @@ export interface LessonProgress {
 export interface LearnerStats {
   xp: { totalXp: number; level: number; currentXp: number; nextLevelXp: number } | null;
   coins: { balance: number } | null;
-  streak: { currentStreak: number; longestStreak: number; checkedInToday: boolean } | null;
+  streak: { currentStreak: number; longestStreak: number; checkedInToday: boolean; recoveryTokens: number; lastCheckInDate: string | null } | null;
 }
 
 export const TRACKS = ['All', 'University', 'Secondary'] as const;
@@ -116,6 +116,33 @@ export async function listLessonProgress(lessons: Lesson[]): Promise<Record<stri
   return Object.fromEntries(entries);
 }
 
+/**
+ * One stats request shared by every caller on the page (the Navbar and the dashboard both show XP, coins and
+ * streak). Before, each loaded them separately: 2 requests per endpoint per dashboard load, against a backend
+ * limit of 2 per 2 s on /xp, so any extra navigation got 429s. Callers within `maxAgeMs` reuse the same promise;
+ * a failed load is not cached. Call `invalidateLearnerStats()` after anything that changes XP, coins or streak.
+ */
+const STATS_MAX_AGE_MS = 10_000;
+let sharedStats: { promise: Promise<LearnerStats>; at: number } | null = null;
+
+export function sharedLearnerStats(now: number = Date.now(), load: () => Promise<LearnerStats> = loadLearnerStats): Promise<LearnerStats> {
+  if (sharedStats && now - sharedStats.at < STATS_MAX_AGE_MS) return sharedStats.promise;
+  const entry = { promise: load(), at: now };
+  sharedStats = entry;
+  entry.promise.catch(() => {
+    if (sharedStats === entry) sharedStats = null;
+  });
+  return entry.promise;
+}
+
+/** Window event fired after XP, coins or streak may have changed; the Navbar reloads its stats. */
+export const LEARNER_STATS_CHANGED_EVENT = 'gleamlearn:stats-changed';
+
+export function invalidateLearnerStats(): void {
+  sharedStats = null;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LEARNER_STATS_CHANGED_EVENT));
+}
+
 /** Each stat is loaded independently: one failing endpoint shows as unavailable instead of failing the page. */
 export async function loadLearnerStats(): Promise<LearnerStats> {
   const [xp, coins, streak] = await Promise.allSettled([xpApi.getXpOverview(), coinsApi.getCoinBalance(), streaksApi.getStreakSummary()]);
@@ -129,7 +156,15 @@ export async function loadLearnerStats(): Promise<LearnerStats> {
     ),
     coins: value(coins, (v) => (typeof v.balance === 'number' ? { balance: v.balance } : null)),
     streak: value(streak, (v) =>
-      typeof v.currentStreak === 'number' ? { currentStreak: v.currentStreak, longestStreak: num(v.longestStreak), checkedInToday: Boolean(v.checkedInToday) } : null,
+      typeof v.currentStreak === 'number'
+        ? {
+            currentStreak: v.currentStreak,
+            longestStreak: num(v.longestStreak),
+            checkedInToday: Boolean(v.checkedInToday),
+            recoveryTokens: num(v.recoveryTokens),
+            lastCheckInDate: typeof v.lastCheckInDate === 'string' ? v.lastCheckInDate : null,
+          }
+        : null,
     ),
   };
 }
