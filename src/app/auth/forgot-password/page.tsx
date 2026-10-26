@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { authApi, ApiError } from '@/lib/api';
-import { recoveryHint } from '@/lib/api-error';
+import { errorMessage } from '@/lib/api-error';
 import { SlowNotice } from '@/components/ui/states';
 import { useSlowFlag } from '@/hooks/useSlowFlag';
 import { validateEmail } from '@/lib/validation/password';
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
 
           {submitError && (
             <Alert variant={submitError.kind === 'network' ? 'offline' : 'error'} title="Code not sent">
-              {recoveryHint(submitError.kind) || submitError.message}
+              {errorMessage(submitError)}
             </Alert>
           )}
 

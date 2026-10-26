@@ -71,7 +71,7 @@ test('learner stats: each failing endpoint becomes null instead of a made-up num
   assert.deepEqual(s.xp, { totalXp: 120, level: 2, currentXp: 20, nextLevelXp: 200 });
   assert.equal(s.coins, null);
   // GET /streak also carries the recovery fields the Streak view needs (shared with the Navbar: one request)
-  assert.deepEqual(s.streak, { currentStreak: 3, longestStreak: 5, checkedInToday: true, recoveryTokens: 1, lastCheckInDate: '2026-10-26' });
+  assert.deepEqual(s.streak, { currentStreak: 3, longestStreak: 5, checkedInToday: true, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-26', today: null });
 });
 
 test('progress normalization never invents completion', () => {

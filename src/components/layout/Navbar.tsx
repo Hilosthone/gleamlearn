@@ -114,7 +114,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, Bell, Zap, Flame, Coins, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signOut } from '@/lib/learner-auth';
+import { firstNameOf, signOut } from '@/lib/learner-auth';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { LEARNER_STATS_CHANGED_EVENT, sharedLearnerStats } from '@/lib/learning';
@@ -148,6 +148,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     window.addEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
     return () => window.removeEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
   }, [retryStats]);
+  const firstName = firstNameOf(session?.user); // updates when the session is refreshed after a profile change
   const streakDays = stats.data?.streak?.currentStreak;
   const totalXp = stats.data?.xp?.totalXp;
   const coinBalance = stats.data?.coins?.balance;
@@ -204,7 +205,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
         {/* Quick welcome text or breadcrumb placeholder */}
         <div className="hidden sm:block">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Welcome back, Scholar 👋</h2>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Welcome back, Scholar{firstName ? ` ${firstName}` : ''} 👋</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">Ready to crush your study goals today?</p>
         </div>
       </div>

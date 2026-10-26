@@ -25,6 +25,7 @@ import {
   type ToolResult,
 } from '@/lib/ai';
 import { relativeTime } from '@/lib/notifications';
+import type { ApiError } from '@/lib/api-error';
 import { loadCompanion } from '@/lib/profile';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
@@ -89,6 +90,35 @@ export default function AiHub() {
     </div>
   );
 }
+
+// Rate-limit cooldown ----------------------------------------------------------------------------------------------
+
+/**
+ * Seconds left before the server will accept another request, when the last error said how long to wait (429, or
+ * the AI provider being busy). Sending is disabled meanwhile instead of letting learners hit the limit again.
+ */
+function useCooldown(error: ApiError | null): number {
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    const wait = error?.retryAfterSeconds ?? 0;
+    const until = Date.now() + wait * 1000;
+    const tick = () => setLeft(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+    const first = setTimeout(tick, 0);
+    const timer = wait > 0 ? setInterval(tick, 1000) : undefined;
+    return () => {
+      clearTimeout(first);
+      if (timer) clearInterval(timer);
+    };
+  }, [error]);
+  return left;
+}
+
+const CooldownNote = ({ seconds }: { seconds: number }) =>
+  seconds > 0 ? (
+    <p role="status" className="text-xs text-gray-500">
+      You can send again in {seconds} second{seconds === 1 ? '' : 's'}.
+    </p>
+  ) : null;
 
 // Shared message thread -------------------------------------------------------------------------------------
 
@@ -252,6 +282,7 @@ function Assistant() {
 
   // the hook keeps the previous conversation while the next one loads: only show data for the selected one
   const loaded = thread.data && thread.data.id === activeId ? thread.data : undefined;
+  const cooldown = useCooldown(send.error);
   const messages = loaded?.messages ?? local;
   const title = activeId ? (loaded?.title ?? 'Conversation') : 'New conversation';
 
@@ -303,7 +334,8 @@ function Assistant() {
         </div>
         {send.isSlow && <SlowNotice message="The AI is taking longer than usual. Your message is still being answered — no need to resend it." />}
         {send.error && <ErrorState error={send.error} compact />}
-        <Composer onSend={async (t) => Boolean(await send.run(t))} busy={send.isPending} placeholder="Ask a question…" />
+        <CooldownNote seconds={cooldown} />
+        <Composer onSend={async (t) => Boolean(await send.run(t))} busy={send.isPending} disabled={cooldown > 0} placeholder="Ask a question…" />
       </section>
     </div>
   );
@@ -383,6 +415,7 @@ function TutorSession({ id, onChanged }: { id: string; onChanged: () => void }) 
       setPending(null);
     }
   });
+  const cooldown = useCooldown(send.error);
   const end = useAsyncAction(async () => {
     await endTutorSession(id);
     session.retry();
@@ -418,10 +451,11 @@ function TutorSession({ id, onChanged }: { id: string; onChanged: () => void }) 
       </div>
       {send.isSlow && <SlowNotice message="The tutor is taking longer than usual. Your message is still being answered — no need to resend it." />}
       {send.error && <ErrorState error={send.error} compact />}
+      <CooldownNote seconds={cooldown} />
       {ended ? (
         <Alert variant="info">This session has ended. Start a new session to keep studying.</Alert>
       ) : (
-        <Composer onSend={async (t) => Boolean(await send.run(t))} busy={send.isPending} placeholder="Ask the tutor…" />
+        <Composer onSend={async (t) => Boolean(await send.run(t))} busy={send.isPending} disabled={cooldown > 0} placeholder="Ask the tutor…" />
       )}
     </section>
   );
@@ -437,7 +471,8 @@ function Tools() {
   const tool = TOOLS.find((t) => t.id === toolId) ?? TOOLS[0];
 
   const run = useAsyncAction(() => runTool(toolId, { input: text.trim(), userAnswer: userAnswer.trim(), correctAnswer: correctAnswer.trim() }));
-  const ready = text.trim() !== '' && (tool.kind === 'text' || userAnswer.trim() !== '');
+  const cooldown = useCooldown(run.error);
+  const ready = text.trim() !== '' && (tool.kind === 'text' || userAnswer.trim() !== '') && cooldown === 0;
 
   return (
     <div className="space-y-4">
@@ -488,6 +523,7 @@ function Tools() {
         )}
         {run.isSlow && <SlowNotice message="The AI is taking longer than usual. Your request is still in progress — no need to resend it." />}
         {run.error && <ErrorState error={run.error} compact />}
+        <CooldownNote seconds={cooldown} />
         <Button type="submit" size="sm" variant="purple" isLoading={run.isPending} disabled={!ready}>
           <Sparkles className="w-4 h-4" aria-hidden="true" /> {tool.label}
         </Button>

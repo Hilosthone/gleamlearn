@@ -60,8 +60,14 @@ const BACKOFF_MAX_MS = 5_000;
 
 const RETRYABLE_STATUSES = new Set([408, 429, 502, 503, 504]);
 
+/** A rate limit is retried only when the server says the wait is short; otherwise retrying just adds more requests. */
+export const MAX_AUTO_RETRY_WAIT_SECONDS = 5;
+
 function isRetryable(error: ApiError): boolean {
   if (error.kind === 'aborted') return false;
+  if (error.status === 429) return error.retryAfterSeconds !== null && error.retryAfterSeconds <= MAX_AUTO_RETRY_WAIT_SECONDS;
+  // the provider's quota is used up or our AI credentials are wrong: retrying cannot help
+  if (error.code === 'AI_PROVIDER_QUOTA') return false;
   if (error.kind === 'network' || error.kind === 'timeout') return true;
   return error.status !== null && RETRYABLE_STATUSES.has(error.status);
 }
@@ -144,10 +150,9 @@ export function createHttpClient(config: HttpClientConfig) {
       }
 
       if (!response.ok) {
-        return {
-          error: apiErrorFromResponse(response.status, response.statusText, data),
-          retryAfterMs: parseRetryAfter(response.headers.get('Retry-After')),
-        };
+        const retryAfterMs = parseRetryAfter(response.headers.get('Retry-After'));
+        const error = apiErrorFromResponse(response.status, response.statusText, data, retryAfterMs !== undefined ? retryAfterMs / 1000 : undefined);
+        return { error, retryAfterMs: error.retryAfterSeconds !== null ? error.retryAfterSeconds * 1000 : retryAfterMs };
       }
       return { data: data as T };
     } finally {

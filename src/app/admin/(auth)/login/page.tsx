@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { SlowNotice } from '@/components/ui/states';
 import { adminAuthApi } from '@/lib/admin-api';
-import { recoveryHint } from '@/lib/api-error';
+import { errorMessage as describeError } from '@/lib/api-error';
 import { toApiError } from '@/lib/async-state';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { validateEmail } from '@/lib/validation/password';
@@ -45,7 +45,7 @@ function AdminLoginForm() {
       ? 'Incorrect email or password, or the admin account is disabled.'
       : error.status === 503
         ? 'Admin sign-in is temporarily unavailable because admin authentication is not configured on the server.'
-        : recoveryHint(error.kind) || error.message;
+        : describeError(error);
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4" aria-label="Administrator sign in">

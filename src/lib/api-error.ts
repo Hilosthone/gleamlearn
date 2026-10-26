@@ -34,14 +34,17 @@ export class ApiError extends Error {
   readonly details: string[];
   /** Machine-readable reason when the backend provides one, e.g. 'ACCOUNT_RESTRICTED', 'ACCOUNT_FROZEN'. */
   readonly code: string | null;
+  /** How long the server asked us to wait (429 / provider busy), from the body or the Retry-After header. */
+  readonly retryAfterSeconds: number | null;
 
-  constructor(message: string, status: number | null, kind: ApiErrorKind, details: string[] = [], code: string | null = null) {
+  constructor(message: string, status: number | null, kind: ApiErrorKind, details: string[] = [], code: string | null = null, retryAfterSeconds: number | null = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.kind = kind;
     this.details = details;
     this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   /** True when retrying the same request later may succeed without user changes. */
@@ -71,7 +74,7 @@ export function kindFromStatus(status: number): ApiErrorKind {
  * NestJS returns `{ statusCode, message, error }`, where `message` may be a string
  * or (for validation failures) an array of strings.
  */
-export function apiErrorFromResponse(status: number, statusText: string, body: unknown): ApiError {
+export function apiErrorFromResponse(status: number, statusText: string, body: unknown, retryAfterHeaderSeconds?: number): ApiError {
   const data = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
   const rawMessage = data.message ?? data.error;
   const details = Array.isArray(rawMessage) ? rawMessage.filter((m): m is string => typeof m === 'string') : [];
@@ -82,10 +85,24 @@ export function apiErrorFromResponse(status: number, statusText: string, body: u
         ? rawMessage
         : `API Error: ${status} ${statusText}`.trim();
   const code = typeof data.code === 'string' ? data.code : null;
-  return new ApiError(message, status, kindFromStatus(status), details, code);
+  const bodyWait = typeof data.retryAfterSeconds === 'number' && data.retryAfterSeconds > 0 ? Math.ceil(data.retryAfterSeconds) : null;
+  const headerWait = retryAfterHeaderSeconds !== undefined && retryAfterHeaderSeconds > 0 ? Math.ceil(retryAfterHeaderSeconds) : null;
+  return new ApiError(message, status, kindFromStatus(status), details, code, bodyWait ?? headerWait);
 }
 
 /** Short, user-facing guidance for an error kind (never includes server internals). */
+/**
+ * Error codes whose message is written by GleamLearn for learners (safe to show as-is): our own rate limit, the AI
+ * provider's capacity or quota, AI outages and timeouts. They are more precise than the generic hint per kind.
+ */
+const SERVER_WORDED_CODES = new Set(['RATE_LIMITED', 'AI_RATE_LIMITED', 'AI_PROVIDER_BUSY', 'AI_PROVIDER_QUOTA', 'AI_UNAVAILABLE', 'AI_TIMEOUT', 'AI_FAILED']);
+
+/** The message to show for an error: the server's own wording for coded errors, else the generic hint for its kind. */
+export function errorMessage(error: ApiError): string {
+  if (error.code && SERVER_WORDED_CODES.has(error.code) && error.message) return error.message;
+  return recoveryHint(error.kind) || error.message;
+}
+
 export function recoveryHint(kind: ApiErrorKind): string {
   switch (kind) {
     case 'unauthorized':

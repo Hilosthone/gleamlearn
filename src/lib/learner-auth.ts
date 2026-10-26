@@ -203,3 +203,9 @@ export function verifyErrorMessage(error: ApiError): string {
   if (error.kind === 'network') return 'We could not reach GleamLearn. Check your connection and try again.';
   return 'Could not verify your email. Please try again.';
 }
+
+/** First word of the learner's full name for greetings; null when there is no usable name (never derived from the email). */
+export function firstNameOf(user: Pick<LearnerUser, 'fullName'> | null | undefined): string | null {
+  const first = typeof user?.fullName === 'string' ? user.fullName.trim().split(/\s+/)[0] : '';
+  return first ? first.slice(0, 40) : null;
+}

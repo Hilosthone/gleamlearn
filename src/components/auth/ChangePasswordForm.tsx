@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { authApi, ApiError } from '@/lib/api';
-import { recoveryHint } from '@/lib/api-error';
+import { errorMessage } from '@/lib/api-error';
 import { SlowNotice } from '@/components/ui/states';
 import { useSlowFlag } from '@/hooks/useSlowFlag';
 import { hasErrors, validateChangePassword, type ChangePasswordValues, type FieldErrors } from '@/lib/validation/password';
@@ -128,7 +128,7 @@ export function ChangePasswordForm({ onCancel }: ChangePasswordFormProps) {
             ) : undefined
           }
         >
-          {recoveryHint(submitError.kind) || submitError.message}
+          {errorMessage(submitError)}
         </Alert>
       )}
 

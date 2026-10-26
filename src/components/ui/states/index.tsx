@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import type { ApiError } from '@/lib/api-error';
-import { recoveryHint } from '@/lib/api-error';
+import { errorMessage, recoveryHint } from '@/lib/api-error';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
@@ -152,11 +152,11 @@ function errorTitle(error: ApiError, isOnline: boolean): string {
     case 'not_found':
       return 'Not found';
     case 'rate_limited':
-      return 'Too many requests';
+      return error.code === 'AI_RATE_LIMITED' ? 'AI limit reached for now' : 'Slow down a little';
     case 'timeout':
       return 'This took too long';
     case 'ai_unavailable':
-      return 'Service temporarily unavailable';
+      return error.code === 'AI_PROVIDER_BUSY' || error.code === 'AI_PROVIDER_QUOTA' ? 'AI is at capacity' : 'Service temporarily unavailable';
     case 'validation':
       return 'Please check the details';
     case 'not_implemented':
@@ -188,7 +188,7 @@ export function ErrorState({ error, onRetry, signInHref = '/auth/login', compact
     return <FeatureUnavailable title={errorTitle(error, isOnline)} description={recoveryHint('not_implemented')} className={className} />;
   }
   const offline = !isOnline || error.kind === 'network';
-  const message = recoveryHint(offline ? 'network' : error.kind) || error.message;
+  const message = offline ? recoveryHint('network') : errorMessage(error);
   const canRetry = Boolean(onRetry) && (offline || error.isTransient || error.kind === 'unknown');
 
   const action =

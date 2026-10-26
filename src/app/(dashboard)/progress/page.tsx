@@ -317,8 +317,11 @@ function StreakView() {
               <Flame className="w-7 h-7 text-orange-500" aria-hidden="true" /> {s.currentStreak} {s.currentStreak === 1 ? 'day' : 'days'}
             </p>
             <p className="text-xs text-gray-500">Longest: {s.longestStreak} days · Recovery tokens: {s.recoveryTokens}</p>
+            <p className="text-[11px] text-gray-500">
+              Your streak counts the days you study: completing a lesson, submitting a quiz, test or exam, reviewing flashcards, or checking in below. Signing in alone doesn&apos;t count.
+            </p>
             {s.checkedInToday ? (
-              <Alert variant="success">You have checked in today.</Alert>
+              <Alert variant="success">Today counts towards your streak.</Alert>
             ) : (
               <Button type="button" variant="orange" size="md" isLoading={checkIn.isPending} onClick={() => void checkIn.run()}>
                 Check in for today
@@ -326,7 +329,7 @@ function StreakView() {
             )}
             {canRecoverStreak(s) && (
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-500">Your streak was broken. You can use a recovery token to keep it.</p>
+                <p className="text-[11px] text-gray-500">Your {s.brokenStreak}-day streak ended. You can use a recovery token to restore it.</p>
                 <Button type="button" variant="outline" size="sm" isLoading={recover.isPending} onClick={() => void recover.run()}>
                   Use a recovery token
                 </Button>

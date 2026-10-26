@@ -37,15 +37,16 @@ test('XP and coin ledgers map the real rows; spending is negative; newest first'
   assert.equal(humanizeSource('QUIZ_COMPLETED'), 'Quiz completed');
 });
 
-test('streak status and when recovery is offered (only when the streak is broken and a token exists)', () => {
-  const now = new Date('2026-10-25T12:00:00Z');
-  const base = toStreakStatus({ currentStreak: 3, longestStreak: 9, checkedInToday: false, recoveryTokens: 1, lastCheckInDate: '2026-10-24' });
-  assert.equal(base.longestStreak, 9);
-  assert.equal(canRecoverStreak(base, now), false, 'last check-in yesterday: not broken');
-  assert.equal(canRecoverStreak({ ...base, lastCheckInDate: '2026-10-20' }, now), true);
-  assert.equal(canRecoverStreak({ ...base, lastCheckInDate: '2026-10-20', recoveryTokens: 0 }, now), false);
-  assert.equal(canRecoverStreak({ ...base, checkedInToday: true, lastCheckInDate: '2026-10-25' }, now), false);
-  assert.equal(canRecoverStreak({ ...base, lastCheckInDate: null }, now), false);
+test('streak status (backend decides broken/active, in its time zone) and when recovery is offered', () => {
+  const base = toStreakStatus({ currentStreak: 3, longestStreak: 9, activeToday: false, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-24', today: '2026-10-25' });
+  assert.deepEqual(base, { currentStreak: 3, longestStreak: 9, checkedInToday: false, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-24', today: '2026-10-25' });
+  assert.equal(canRecoverStreak(base), false, 'alive: nothing to recover');
+  const broken = toStreakStatus({ currentStreak: 0, longestStreak: 9, activeToday: false, brokenStreak: 4, recoveryTokens: 1, lastCheckInDate: '2026-10-20' });
+  assert.equal(canRecoverStreak(broken), true);
+  assert.equal(canRecoverStreak({ ...broken, recoveryTokens: 0 }), false);
+  assert.equal(canRecoverStreak({ ...broken, checkedInToday: true }), false);
+  // older backends only send checkedInToday
+  assert.equal(toStreakStatus({ currentStreak: 1, checkedInToday: true }).checkedInToday, true);
 });
 
 test('check-in dates and the month grid (Monday first)', () => {

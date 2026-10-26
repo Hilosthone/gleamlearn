@@ -20,7 +20,7 @@
  */
 
 import { achievementsApi, badgesApi, coinsApi, leaderboardsApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
-import { invalidateLearnerStats } from './learning.ts';
+import { invalidateLearnerStats, type StreakSummary } from './learning.ts';
 
 type Raw = Record<string, unknown>;
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -72,22 +72,18 @@ export function toCoinLedger(res: unknown): LedgerEntry[] {
 // Streak
 // ---------------------------------------------------------------------------------------------------------
 
-export interface StreakStatus {
-  currentStreak: number;
-  longestStreak: number;
-  checkedInToday: boolean;
-  recoveryTokens: number;
-  lastCheckInDate: string | null;
-}
+export type StreakStatus = StreakSummary;
 
 export function toStreakStatus(res: unknown): StreakStatus {
   const r = (res ?? {}) as Raw;
   return {
     currentStreak: num(r.currentStreak),
     longestStreak: num(r.longestStreak),
-    checkedInToday: r.checkedInToday === true,
+    checkedInToday: (r.activeToday ?? r.checkedInToday) === true,
+    brokenStreak: num(r.brokenStreak),
     recoveryTokens: num(r.recoveryTokens),
     lastCheckInDate: typeof r.lastCheckInDate === 'string' ? r.lastCheckInDate : null,
+    today: typeof r.today === 'string' ? r.today : null,
   };
 }
 
@@ -99,11 +95,9 @@ export function toCheckInDates(res: unknown): string[] {
 }
 
 /** Recovery only makes sense when the streak is broken: the last check-in is older than yesterday (UTC, like the backend). */
-export function canRecoverStreak(s: StreakStatus, now: Date = new Date()): boolean {
-  if (s.recoveryTokens <= 0 || s.checkedInToday || !s.lastCheckInDate) return false;
-  const yesterday = new Date(now);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  return s.lastCheckInDate < isoDay(yesterday);
+/** The backend decides whether the streak is broken (in its streak time zone); a token restores it. */
+export function canRecoverStreak(s: StreakStatus): boolean {
+  return s.recoveryTokens > 0 && !s.checkedInToday && s.brokenStreak > 0;
 }
 
 /** A month grid (Monday first) marking checked-in days. `month` is 0-based. */

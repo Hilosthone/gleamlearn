@@ -132,3 +132,13 @@ test('delivery notices never claim an email was sent when it was not', () => {
   assert.doesNotMatch(auth.deliveryNotice('pending').text, /we sent/i);
   assert.equal(auth.deliveryOf({ verificationEmail: 'bogus' }), 'unknown');
 });
+
+test('greeting first name comes from fullName only, with a blank fallback', async () => {
+  const { firstNameOf } = await import('../learner-auth.ts');
+  assert.equal(firstNameOf({ fullName: '  Amina   Bello ' }), 'Amina');
+  assert.equal(firstNameOf({ fullName: '   ' }), null);
+  assert.equal(firstNameOf({ fullName: null, email: 'amina.bello@example.test' }), null);
+  assert.equal(firstNameOf(undefined), null);
+  // after a profile update the refreshed session carries the new name
+  assert.equal(firstNameOf({ fullName: 'Chidi Okafor' }), 'Chidi');
+});

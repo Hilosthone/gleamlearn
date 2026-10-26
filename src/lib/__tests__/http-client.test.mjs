@@ -153,3 +153,33 @@ test('backoff delay is capped and jittered', () => {
   assert.equal(backoffDelay(3, () => 0), 0);
   assert.equal(backoffDelay(1, () => 1, 60_000), 5000);
 });
+
+test('429 without a known wait, or with a long one, is not retried automatically (it would only add load)', async () => {
+  for (const response of [json(429, {}), json(429, { code: 'AI_RATE_LIMITED', retryAfterSeconds: 60 }, { 'Retry-After': '60' })]) {
+    const { client, calls } = setup([response, json(200, {})]);
+    await assert.rejects(client.request('/x'), (err) => err.kind === 'rate_limited');
+    assert.equal(calls.length, 1);
+  }
+});
+
+test('the wait comes from the body (readable cross-origin) or the Retry-After header', async () => {
+  const fromBody = setup([json(429, { code: 'RATE_LIMITED', retryAfterSeconds: 9, message: 'wait 9' }), json(200, {})]);
+  await assert.rejects(fromBody.client.request('/x', { method: 'POST' }), (err) => err.retryAfterSeconds === 9 && err.code === 'RATE_LIMITED');
+  const fromHeader = setup([json(429, {}, { 'Retry-After': '30' })]);
+  await assert.rejects(fromHeader.client.request('/x', { method: 'POST' }), (err) => err.retryAfterSeconds === 30);
+});
+
+test('AI provider quota exhaustion is never retried; a busy provider with a short wait is', async () => {
+  const quota = setup([json(503, { code: 'AI_PROVIDER_QUOTA', message: 'quota' }), json(200, {})]);
+  await assert.rejects(quota.client.request('/x'), (err) => err.code === 'AI_PROVIDER_QUOTA');
+  assert.equal(quota.calls.length, 1);
+  const busy = setup([json(503, { code: 'AI_PROVIDER_BUSY', retryAfterSeconds: 3 }), json(200, { ok: 1 })]);
+  assert.deepEqual(await busy.client.request('/x'), { ok: 1 });
+  assert.deepEqual(busy.sleeps, [3000]);
+});
+
+test('POSTs (AI generation, chat) are never retried, whatever the error', async () => {
+  const { client, calls } = setup([json(503, { code: 'AI_PROVIDER_BUSY', retryAfterSeconds: 1 }), json(200, {})]);
+  await assert.rejects(client.request('/ai/chat', { method: 'POST', body: { message: 'hi' } }));
+  assert.equal(calls.length, 1);
+});

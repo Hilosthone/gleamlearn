@@ -63,3 +63,15 @@ test('501 FEATURE_UNAVAILABLE is "not available yet": not a server fault, not tr
   assert.equal(recoveryHint('not_implemented'), 'This feature is not available yet.');
   assert.doesNotMatch(recoveryHint('not_implemented'), /try again/i);
 });
+
+test('coded server errors show their own wording; others the generic hint for their kind', async () => {
+  const { apiErrorFromResponse, errorMessage } = await import('../api-error.ts');
+  const ours = apiErrorFromResponse(429, 'ERR', { code: 'AI_RATE_LIMITED', message: "You've reached the AI request limit for now. Please wait 12 seconds and try again.", retryAfterSeconds: 12 });
+  assert.equal(errorMessage(ours), "You've reached the AI request limit for now. Please wait 12 seconds and try again.");
+  assert.equal(ours.retryAfterSeconds, 12);
+  const quota = apiErrorFromResponse(503, 'ERR', { code: 'AI_PROVIDER_QUOTA', message: "GleamLearn's AI has reached its usage limit with our AI provider. Please try again later." });
+  assert.match(errorMessage(quota), /usage limit with our AI provider/);
+  // an uncoded upstream message is not shown (could be anything); the generic hint is
+  const raw = apiErrorFromResponse(503, 'ERR', { message: 'ECONNREFUSED 10.0.0.3:8000' });
+  assert.equal(errorMessage(raw), 'The service is temporarily unavailable. Please try again shortly.');
+});

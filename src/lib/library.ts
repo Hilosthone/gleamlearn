@@ -15,6 +15,7 @@
  */
 
 import { ApiError } from './api-error.ts';
+import { invalidateLearnerStats } from './learning.ts';
 import { coursesApi, flashcardDecksApi, flashcardsApi, libraryApi, notesApi } from './api.ts';
 
 type Raw = Record<string, unknown>;
@@ -161,7 +162,11 @@ export const deleteDeck = (id: string) => flashcardDecksApi.deleteDeck(id);
 export const addCard = (deckId: string, question: string, answer: string) => flashcardsApi.createFlashcard({ deckId, question, answer });
 export const deleteCard = (id: string) => flashcardsApi.deleteFlashcard(id);
 export const loadDueCards = async () => toDueCards(await flashcardsApi.getDueFlashcards());
-export const reviewCard = (id: string, quality: number) => flashcardsApi.submitReview(id, { quality });
+export async function reviewCard(id: string, quality: number) {
+  const res = await flashcardsApi.submitReview(id, { quality });
+  invalidateLearnerStats(); // a review counts towards today's streak
+  return res;
+}
 
 /** Whether the learner saved this course; null when the saved list could not be read (show no button rather than guess). */
 export async function loadCourseSaved(courseId: string): Promise<boolean | null> {

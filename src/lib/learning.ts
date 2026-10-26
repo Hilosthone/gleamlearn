@@ -13,7 +13,9 @@
  *   GET  /lessons/:id/progress        → LessonProgress   (isCompleted false when never started)
  *   POST /lessons/:id/start | /complete → LessonProgress
  *   GET  /xp → { totalXp, level, currentXp, nextLevelXp } · GET /coins → { balance, totalTransactions }
- *   GET  /streak → { currentStreak, longestStreak, checkedInToday, recoveryTokens, lastCheckInDate }
+ *   GET  /streak → { currentStreak (0 once broken), longestStreak, activeToday/checkedInToday, brokenStreak, recoveryTokens, lastCheckInDate, today }
+ *        A day counts when the learner completes a lesson, submits a quiz/test/exam, reviews a flashcard or checks in;
+ *        days are calendar days in the backend's streak time zone (Africa/Lagos), which `today` reports.
  * Progress shown in the UI comes from the backend; nothing here awards XP or marks progress by itself.
  *
  * Kept free of path aliases so it can be unit-tested with `node --test`.
@@ -61,10 +63,21 @@ export interface LessonProgress {
   completedAt: string | null;
 }
 
+/** GET /streak. `checkedInToday`: today already counts. `brokenStreak`: the streak that ended (restorable with a token). */
+export interface StreakSummary {
+  currentStreak: number;
+  longestStreak: number;
+  checkedInToday: boolean;
+  brokenStreak: number;
+  recoveryTokens: number;
+  lastCheckInDate: string | null;
+  today: string | null;
+}
+
 export interface LearnerStats {
   xp: { totalXp: number; level: number; currentXp: number; nextLevelXp: number } | null;
   coins: { balance: number } | null;
-  streak: { currentStreak: number; longestStreak: number; checkedInToday: boolean; recoveryTokens: number; lastCheckInDate: string | null } | null;
+  streak: StreakSummary | null;
 }
 
 export const TRACKS = ['All', 'University', 'Secondary'] as const;
@@ -104,7 +117,9 @@ export async function startLesson(id: string): Promise<LessonProgress> {
 }
 
 export async function completeLesson(id: string): Promise<LessonProgress> {
-  return normalizeProgress(id, await lessonsApi.completeLesson(id));
+  const progress = normalizeProgress(id, await lessonsApi.completeLesson(id));
+  invalidateLearnerStats(); // completing a lesson counts towards today's streak
+  return progress;
 }
 
 export const enroll = (courseId: string) => coursesApi.enrollInCourse(courseId);
@@ -160,9 +175,11 @@ export async function loadLearnerStats(): Promise<LearnerStats> {
         ? {
             currentStreak: v.currentStreak,
             longestStreak: num(v.longestStreak),
-            checkedInToday: Boolean(v.checkedInToday),
+            checkedInToday: Boolean(v.activeToday ?? v.checkedInToday),
+            brokenStreak: num(v.brokenStreak),
             recoveryTokens: num(v.recoveryTokens),
             lastCheckInDate: typeof v.lastCheckInDate === 'string' ? v.lastCheckInDate : null,
+            today: typeof v.today === 'string' ? v.today : null,
           }
         : null,
     ),

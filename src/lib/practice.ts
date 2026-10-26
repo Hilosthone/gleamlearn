@@ -136,7 +136,7 @@ export async function submitAssessment(kind: AssessmentKind, id: string, selecte
         ? await testsApi.submitTestAttempt(id, { answers })
         : await examsApi.submitExamAttempt(id, { answers });
   const result = toSubmitResult(res);
-  if (result.xpAwarded > 0 || result.coinsAwarded > 0) invalidateLearnerStats(); // the Navbar shows the new totals
+  invalidateLearnerStats(); // a submission counts towards today's streak, and may award XP and coins
   return result;
 }
 

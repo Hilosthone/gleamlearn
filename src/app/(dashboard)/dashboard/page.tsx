@@ -91,7 +91,7 @@ export default function DashboardPage() {
             icon={Flame}
             tone="bg-orange-50 dark:bg-orange-950/40 text-orange-500"
             value={s?.streak ? `${s.streak.currentStreak} day${s.streak.currentStreak === 1 ? '' : 's'}` : '—'}
-            hint={s?.streak ? `Longest: ${s.streak.longestStreak} · ${s.streak.checkedInToday ? 'checked in today' : 'not checked in today'}` : 'Unavailable right now'}
+            hint={s?.streak ? `Longest: ${s.streak.longestStreak} · ${s.streak.checkedInToday ? 'today counts' : 'study today to keep it'}` : 'Unavailable right now'}
           />
           <Stat
             label="Study time"
