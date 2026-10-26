@@ -19,7 +19,7 @@ const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 d
 /**
  * Learner course catalog (GET /api/v1/admin/content/courses). These are the same `courses` / `topics` /
  * `lessons` records the learner API (/api/v1/courses, /lessons) serves. Requires content.manage.
- * The web app's /learn pages currently render hard-coded sample data, not this catalog.
+ * The learner /learn pages read this catalog.
  */
 export default function AdminContentPage() {
   return (
@@ -52,9 +52,6 @@ function CourseCatalog() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             The learner course catalog served by the API (<code className="text-xs">/api/v1/courses</code>). Changes apply immediately;
             there is no draft or publish step.
-          </p>
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            Note: the learner web app&apos;s Learn pages still show built-in sample courses and do not read this catalog yet.
           </p>
         </div>
         {!creating && (

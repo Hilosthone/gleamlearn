@@ -65,12 +65,13 @@ test('learner stats: each failing endpoint becomes null instead of a made-up num
   responder = (url) => {
     if (url.endsWith('/xp')) return json(200, { totalXp: 120, level: 2, currentXp: 20, nextLevelXp: 200 });
     if (url.endsWith('/coins')) return json(500, { message: 'down' });
-    return json(200, { currentStreak: 3, longestStreak: 5, checkedInToday: true });
+    return json(200, { currentStreak: 3, longestStreak: 5, checkedInToday: true, recoveryTokens: 1, lastCheckInDate: '2026-10-26' });
   };
   const s = await L.loadLearnerStats();
   assert.deepEqual(s.xp, { totalXp: 120, level: 2, currentXp: 20, nextLevelXp: 200 });
   assert.equal(s.coins, null);
-  assert.deepEqual(s.streak, { currentStreak: 3, longestStreak: 5, checkedInToday: true });
+  // GET /streak also carries the recovery fields the Streak view needs (shared with the Navbar: one request)
+  assert.deepEqual(s.streak, { currentStreak: 3, longestStreak: 5, checkedInToday: true, recoveryTokens: 1, lastCheckInDate: '2026-10-26' });
 });
 
 test('progress normalization never invents completion', () => {

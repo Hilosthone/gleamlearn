@@ -386,3 +386,86 @@ export const adminContentApi = {
   deleteLesson: (id: string, options?: Options) =>
     adminHttp.request<{ status: 'success'; message: string }>(`/admin/content/lessons/${enc(id)}`, { ...options, method: 'DELETE' }),
 };
+
+// ==========================================
+// ASSESSMENTS — /api/v1/{quizzes|tests|exams} (content.manage)
+// The quizzes, tests and exams learners take. Learner reads strip the answer key; these admin reads
+// (GET /:kind/manage/all, /:kind/manage/:id) return the stored records, answer keys included.
+// ==========================================
+
+export type AssessmentKind = 'quizzes' | 'tests' | 'exams';
+
+export interface AdminAssessmentQuestion {
+  question?: string;
+  options?: unknown[];
+  correctAnswer?: unknown;
+  explanation?: string;
+  [key: string]: unknown;
+}
+
+export interface AdminAssessment {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  courseId?: string | null;
+  questions?: AdminAssessmentQuestion[] | null;
+  durationMinutes?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AssessmentInput {
+  title: string;
+  description?: string;
+  questions: { question: string; options: string[]; correctAnswer: string; explanation?: string }[];
+  durationMinutes?: number;
+}
+
+export const adminAssessmentsApi = {
+  list: (kind: AssessmentKind, options?: Options) => adminHttp.request<AdminAssessment[]>(`/${kind}/manage/all`, options),
+  get: (kind: AssessmentKind, id: string, options?: Options) => adminHttp.request<AdminAssessment>(`/${kind}/manage/${enc(id)}`, options),
+  create: (kind: AssessmentKind, input: AssessmentInput, options?: Options) =>
+    adminHttp.request<AdminAssessment>(`/${kind}`, { ...options, method: 'POST', body: input }),
+  update: (kind: AssessmentKind, id: string, input: AssessmentInput, options?: Options) =>
+    adminHttp.request<AdminAssessment>(`/${kind}/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  remove: (kind: AssessmentKind, id: string, options?: Options) =>
+    adminHttp.request<unknown>(`/${kind}/${enc(id)}`, { ...options, method: 'DELETE' }),
+};
+
+// ==========================================
+// MODERATION — /api/v1/admin/reports, /api/v1/admin/ai/generated-content (moderation.manage)
+// ==========================================
+
+export interface AdminReportRecord {
+  id: string;
+  status?: string;
+  reason?: string | null;
+  description?: string | null;
+  reportedItemType?: string | null;
+  reportedItemId?: string | null;
+  reporterId?: string | null;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface AdminAiContentRecord {
+  id: string;
+  status?: string;
+  contentType?: string | null;
+  contentPayload?: string | null;
+  generatedByUserId?: string | null;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export const adminModerationApi = {
+  listReports: (params: { page?: number; status?: string } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ reports: AdminReportRecord[]; pagination: Pagination }>>(`/admin/reports${query({ page: params.page, limit: 20, status: params.status })}`, options),
+  resolveReport: (id: string, options?: Options) => adminHttp.request<Ok<AdminReportRecord>>(`/admin/reports/${enc(id)}/resolve`, { ...options, method: 'PATCH' }),
+  rejectReport: (id: string, options?: Options) => adminHttp.request<Ok<AdminReportRecord>>(`/admin/reports/${enc(id)}/reject`, { ...options, method: 'PATCH' }),
+  listAiContent: (params: { page?: number; status?: string } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ contents: AdminAiContentRecord[]; pagination: Pagination }>>(`/admin/ai/generated-content${query({ page: params.page, limit: 20, status: params.status })}`, options),
+  approveAiContent: (id: string, options?: Options) => adminHttp.request<Ok<AdminAiContentRecord>>(`/admin/ai/generated-content/${enc(id)}/approve`, { ...options, method: 'PATCH' }),
+  rejectAiContent: (id: string, options?: Options) => adminHttp.request<Ok<AdminAiContentRecord>>(`/admin/ai/generated-content/${enc(id)}/reject`, { ...options, method: 'PATCH' }),
+  deleteAiContent: (id: string, options?: Options) => adminHttp.request<unknown>(`/admin/ai/generated-content/${enc(id)}`, { ...options, method: 'DELETE' }),
+};

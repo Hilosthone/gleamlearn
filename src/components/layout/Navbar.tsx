@@ -204,7 +204,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
         {/* Quick welcome text or breadcrumb placeholder */}
         <div className="hidden sm:block">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Welcome back, Student 👋</h2>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Welcome back, Scholar 👋</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">Ready to crush your study goals today?</p>
         </div>
       </div>

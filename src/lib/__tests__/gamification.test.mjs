@@ -28,6 +28,12 @@ test('XP and coin ledgers map the real rows; spending is negative; newest first'
     { id: 'c2', amount: 5, type: 'SPEND', source: 'STORE', createdAt: '2026-10-03T00:00:00Z' },
   ]);
   assert.deepEqual(coins.map((e) => [e.id, e.amount]), [['c2', -5], ['c1', 10]]);
+  const admin = toCoinLedger([
+    { id: 'a1', amount: -20, type: 'ADMIN_DEDUCT', createdAt: '2026-10-05T00:00:00Z' },
+    { id: 'a2', amount: 30, type: 'ADMIN_GRANT', createdAt: '2026-10-04T00:00:00Z' },
+    { id: 's1', amount: -7, type: 'SPEND', createdAt: '2026-10-03T00:00:00Z' },
+  ]);
+  assert.deepEqual(admin.map((e) => e.amount), [-20, 30, -7], 'deductions stay negative, grants positive');
   assert.equal(humanizeSource('QUIZ_COMPLETED'), 'Quiz completed');
 });
 

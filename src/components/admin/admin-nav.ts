@@ -17,8 +17,8 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { name: 'Overview', href: '/admin', icon: LayoutDashboard, connected: true, permission: 'admin.self' },
   { name: 'Users', href: '/admin/users', icon: Users, connected: true, permission: 'users.view' },
   { name: 'Learning content', href: '/admin/content', icon: BookOpen, connected: true, permission: 'content.manage' },
-  { name: 'Assessments', href: '/admin/assessments', icon: ClipboardCheck, connected: false, permission: 'content.manage' },
-  { name: 'Reports & moderation', href: '/admin/moderation', icon: ShieldAlert, connected: false, permission: 'moderation.manage' },
+  { name: 'Assessments', href: '/admin/assessments', icon: ClipboardCheck, connected: true, permission: 'content.manage' },
+  { name: 'Reports & moderation', href: '/admin/moderation', icon: ShieldAlert, connected: true, permission: 'moderation.manage' },
   { name: 'Platform settings', href: '/admin/settings', icon: Settings, connected: true, permission: 'settings.manage' },
 ];
 

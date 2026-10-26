@@ -15,6 +15,7 @@ export default function ContactUs() {
   const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [sendFailed, setSendFailed] = useState<boolean>(false);
 
   /**
    * Handles contact form submission via EmailJS
@@ -25,6 +26,7 @@ export default function ContactUs() {
     if (!contactForm.name || !contactForm.email || !contactForm.message) return;
 
     setIsSubmitting(true);
+    setSendFailed(false);
 
     try {
       const serviceId = "service_kpkm79i";
@@ -59,6 +61,7 @@ export default function ContactUs() {
       }, 5000);
     } catch (error: any) {
       console.error("EmailJS contact dispatch error:", error?.text || error?.message || error);
+      setSendFailed(true); // say so instead of failing silently
     } finally {
       setIsSubmitting(false);
     }
@@ -188,6 +191,13 @@ export default function ContactUs() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-brand-blue resize-none"
                 ></textarea>
               </div>
+
+              {sendFailed && (
+                <p role="alert" className="text-xs text-red-600">
+                  Your message could not be sent. Please try again, or email us directly at{" "}
+                  <a className="font-semibold underline" href="mailto:gleamlearn.ai@gmail.com">gleamlearn.ai@gmail.com</a>.
+                </p>
+              )}
 
               <button
                 type="submit"

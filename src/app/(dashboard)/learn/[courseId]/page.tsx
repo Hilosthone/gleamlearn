@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, BookOpen, CheckCircle2, Circle, ListOrdered, PlayCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, Bookmark, BookmarkCheck, CheckCircle2, Circle, ListOrdered, PlayCircle } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { QueryState, LoadingState, EmptyState, ErrorState, SlowNotice } from '@/components/ui/states';
@@ -23,6 +23,7 @@ import {
   type Lesson,
   type LessonProgress,
 } from '@/lib/learning';
+import { loadCourseSaved, setCourseSaved } from '@/lib/library';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -31,6 +32,7 @@ interface CourseView {
   lessons: Lesson[];
   progress: Record<string, LessonProgress>;
   enrolled: boolean;
+  saved: boolean | null; // null: the library could not be read
 }
 
 /** Course detail: topics, lessons with the learner's real progress, enrol / leave. */
@@ -38,15 +40,21 @@ export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
 
   const view = useApiQuery<CourseView>(async () => {
-    const [course, lessons, enrolledList] = await Promise.all([getCourse(courseId), listLessons(courseId), listEnrolledCourses()]);
+    const [course, lessons, enrolledList, saved] = await Promise.all([getCourse(courseId), listLessons(courseId), listEnrolledCourses(), loadCourseSaved(courseId)]);
     const progress = await listLessonProgress(lessons);
-    return { course, lessons, progress, enrolled: enrolledList.some((c) => c.id === courseId) };
+    return { course, lessons, progress, enrolled: enrolledList.some((c) => c.id === courseId), saved };
   }, [courseId], { enabled: Boolean(courseId) });
 
   const enrollment = useAsyncAction(async (_signal, join: boolean) => {
     const res = join ? await enroll(courseId) : await unenroll(courseId);
     view.retry(); // show the server's state
     return res;
+  });
+
+  const library = useAsyncAction(async (_signal, save: boolean) => {
+    const saved = await setCourseSaved(courseId, save);
+    view.retry();
+    return saved;
   });
 
   return (
@@ -56,14 +64,18 @@ export default function CourseDetailPage() {
       </Link>
 
       <QueryState query={view} loading={<LoadingState layout="detail" label="Loading course…" />}>
-        {(v) => <CourseBody v={v} enrollment={enrollment} />}
+        {(v) => <CourseBody v={v} enrollment={enrollment} library={library} />}
       </QueryState>
     </div>
   );
 }
 
-function CourseBody({ v, enrollment }: { v: CourseView; enrollment: ReturnType<typeof useAsyncAction<[boolean], unknown>> }) {
+type Toggle<T = unknown> = ReturnType<typeof useAsyncAction<[boolean], T>>;
+
+function CourseBody({ v, enrollment, library }: { v: CourseView; enrollment: Toggle; library: Toggle<boolean> }) {
   const { course, lessons, progress, enrolled } = v;
+  // The state the server just confirmed wins over a refresh that may have failed (e.g. throttled)
+  const saved = library.status === 'success' && library.result !== undefined ? library.result : v.saved;
   const topics = useMemo(() => sortTopics(course.topics), [course.topics]);
   const completion = courseCompletion(lessons, progress);
   const next = nextLessonToStudy(lessons, progress);
@@ -86,10 +98,17 @@ function CourseBody({ v, enrollment }: { v: CourseView; enrollment: ReturnType<t
             <Button type="button" variant={enrolled ? 'outline' : 'primary'} size="sm" isLoading={enrollment.isPending} onClick={() => enrollment.run(!enrolled)}>
               {enrolled ? 'Leave course' : 'Enrol in this course'}
             </Button>
+            {saved !== null && (
+              <Button type="button" variant="outline" size="sm" isLoading={library.isPending} onClick={() => library.run(!saved)} aria-pressed={saved}>
+                {saved ? <BookmarkCheck className="w-4 h-4" aria-hidden="true" /> : <Bookmark className="w-4 h-4" aria-hidden="true" />}
+                {saved ? 'Saved to library' : 'Save to library'}
+              </Button>
+            )}
           </div>
         </div>
         {enrollment.isSlow && <SlowNotice />}
         {enrollment.error && <ErrorState error={enrollment.error} compact />}
+        {library.error && <ErrorState error={library.error} compact />}
         {enrollment.status === 'success' && <Alert variant="success">{enrolled ? 'You are enrolled in this course.' : 'You have left this course.'}</Alert>}
         {enrolled && lessons.length > 0 && (
           <div>

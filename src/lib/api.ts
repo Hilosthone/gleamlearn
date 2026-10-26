@@ -2241,6 +2241,15 @@ export interface GeneratePlannerPayload {
   [key: string]: any;
 }
 
+export interface CreatePlannerItemPayload {
+  title: string;
+  scheduledDate: string; // YYYY-MM-DD
+  startTime?: string; // HH:MM (24-hour)
+  endTime?: string;
+  activityType?: 'study' | 'quiz_practice' | 'revision' | 'exam_prep';
+  description?: string;
+}
+
 export interface UpdatePlannerItemPayload {
   title?: string;
   scheduledDate?: string; // e.g., "2026-09-20"
@@ -2265,6 +2274,10 @@ export const plannerApi = {
    * GET /api/v1/planner
    * Fetch the complete study schedule timeline for the authenticated user.
    */
+  /** Adds one session the learner plans themselves: { title, scheduledDate: 'YYYY-MM-DD', startTime?: 'HH:MM', endTime?, activityType?, description? } */
+  createPlannerItem: (payload: CreatePlannerItemPayload, token?: string) =>
+    apiRequest<any>('/planner', { method: 'POST', body: payload, token }),
+
   getAllPlannerSessions: (token?: string) => 
     apiRequest<any>('/planner', { method: 'GET', token }),
 

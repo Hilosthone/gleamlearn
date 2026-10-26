@@ -34,11 +34,11 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
     { name: 'Learn', href: '/learn', icon: BookOpen },
     { name: 'Library', href: '/library', icon: FolderKanban },
     { name: 'Practice', href: '/practice', icon: Target },
     { name: 'Exams', href: '/exams', icon: GraduationCap },
-    { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
     { name: 'Planner', href: '/planner', icon: Calendar },
     { name: 'Progress', href: '/progress', icon: TrendingUp },
     { name: 'History', href: '/history', icon: History },

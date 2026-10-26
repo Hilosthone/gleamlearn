@@ -1,424 +1,530 @@
-// 'use client';
-
-// import React, { useState } from 'react';
-// import Link from 'next/link';
-// import { 
-//   FolderLibrary, 
-//   Upload, 
-//   FileText, 
-//   Sparkles, 
-//   Layers, 
-//   HelpCircle, 
-//   CheckSquare, 
-//   Search, 
-//   Filter, 
-//   ArrowRight,
-//   Plus
-// } from 'lucide-react';
-
-// export default function LibraryPage() {
-//   const [activeTab, setActiveTab] = useState('all');
-//   const [searchQuery, setSearchQuery] = useState('');
-
-//   const tabs = [
-//     { id: 'all', label: 'All Items', count: 18 },
-//     { id: 'uploads', label: 'Uploaded Files', count: 4 },
-//     { id: 'classes', label: 'AI Classes', count: 5 },
-//     { id: 'notes', label: 'Notes', count: 4 },
-//     { id: 'flashcards', label: 'Flashcards', count: 3 },
-//     { id: 'quizzes', label: 'Quizzes & Tests', count: 2 },
-//   ];
-
-//   const libraryItems = [
-//     {
-//       id: 'item-1',
-//       title: 'Advanced Operating Systems & Kernel Threads',
-//       type: 'classes',
-//       category: 'AI-Generated Class',
-//       badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200',
-//       date: 'Sep 20, 2026',
-//       details: '12 Topics • 48 Flashcards • 3 Quizzes',
-//       href: '/library/generated-class/os-threads',
-//     },
-//     {
-//       id: 'item-2',
-//       title: 'CSC301_Lecture_Notes_Chapter_4.pdf',
-//       type: 'uploads',
-//       category: 'Uploaded File',
-//       badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200',
-//       date: 'Sep 18, 2026',
-//       details: 'PDF • 4.2 MB • Processed Successfully',
-//       href: '/library/upload',
-//     },
-//     {
-//       id: 'item-3',
-//       title: 'Macroeconomics Fiscal Policy & Inflation Formulas',
-//       type: 'notes',
-//       category: 'Notes',
-//       badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200',
-//       date: 'Sep 15, 2026',
-//       details: 'Summary notes with key equations',
-//       href: '/library/generated-class/macro-notes',
-//     },
-//     {
-//       id: 'item-4',
-//       title: 'Data Structures Quick-Recall Flashcards',
-//       type: 'flashcards',
-//       category: 'Flashcards',
-//       badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200',
-//       date: 'Sep 12, 2026',
-//       details: '35 Cards • High Retention Rate',
-//       href: '/library/generated-class/ds-flashcards',
-//     },
-//   ];
-
-//   const filteredItems = libraryItems.filter(item => {
-//     const matchesTab = activeTab === 'all' || item.type === activeTab;
-//     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-//     return matchesTab && matchesSearch;
-//   });
-
-//   return (
-//     <div className="space-y-8 animate-in fade-in duration-300 pb-12">
-      
-//       {/* Header & Upload Button */}
-//       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-//         <div>
-//           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-//             <span>My Library & Uploads</span>
-//             <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950/60 text-[var(--color-brand-blue)] font-bold">
-//               Hub
-//             </span>
-//           </h1>
-//           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-//             Manage your uploaded materials, AI-generated courses, flashcards, notes, and saved questions.
-//           </p>
-//         </div>
-
-//         <Link
-//           href="/library/upload"
-//           className="px-5 py-3 rounded-2xl bg-[var(--color-brand-blue)] text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all flex items-center justify-center gap-2 w-fit"
-//         >
-//           <Upload className="w-4 h-4" />
-//           <span>Upload New Material</span>
-//         </Link>
-//       </div>
-
-//       {/* Search & Filter Bar */}
-//       <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-[#111827] p-4 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-//         <div className="relative w-full sm:w-80">
-//           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-//           <input
-//             type="text"
-//             placeholder="Search library items..."
-//             value={searchQuery}
-//             onChange={(e) => setSearchQuery(e.target.value)}
-//             className="w-full pl-10 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue)]"
-//           />
-//         </div>
-
-//         <div className="flex items-center gap-1.5 overflow-x-auto w-full pb-1 sm:pb-0 scrollbar-none">
-//           {tabs.map((tab) => (
-//             <button
-//               key={tab.id}
-//               onClick={() => setActiveTab(tab.id)}
-//               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-//                 activeTab === tab.id
-//                   ? 'bg-[var(--color-brand-blue)] text-white shadow-xs'
-//                   : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
-//               }`}
-//             >
-//               <span>{tab.label}</span>
-//               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-blue-700 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
-//                 {tab.count}
-//               </span>
-//             </button>
-//           ))}
-//         </div>
-//       </div>
-
-//       {/* Library Items List */}
-//       <div className="space-y-4">
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//           {filteredItems.map((item) => (
-//             <div
-//               key={item.id}
-//               className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
-//             >
-//               <div className="space-y-3">
-//                 <div className="flex items-center justify-between">
-//                   <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
-//                     {item.category}
-//                   </span>
-//                   <span className="text-[11px] text-gray-400 font-medium">{item.date}</span>
-//                 </div>
-
-//                 <h3 className="text-base font-extrabold text-gray-900 dark:text-white group-hover:text-[var(--color-brand-blue)] transition-colors">
-//                   {item.title}
-//                 </h3>
-
-//                 <p className="text-xs text-gray-500 dark:text-gray-400">
-//                   {item.details}
-//                 </p>
-//               </div>
-
-//               <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-//                 <span className="text-[11px] text-gray-400 font-mono">ID: {item.id}</span>
-//                 <Link
-//                   href={item.href}
-//                   className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-[var(--color-brand-blue)] hover:text-white transition-colors flex items-center gap-1.5"
-//                 >
-//                   <span>Open Item</span>
-//                   <ArrowRight className="w-3.5 h-3.5" />
-//                 </Link>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </div>
-
-//     </div>
-//   );
-// }
-
-
-
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { 
-  FolderOpen, 
-  Upload, 
-  FileText, 
-  Sparkles, 
-  Layers, 
-  HelpCircle, 
-  CheckSquare, 
-  Search, 
-  Filter, 
-  ArrowRight,
-  Plus
-} from 'lucide-react';
+import { Bookmark, FileText, Layers, Plus, RotateCcw, Trash2, Upload, ArrowLeft, Pencil } from 'lucide-react';
+import { useApiQuery } from '@/hooks/useApiQuery';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { EmptyState, ErrorState, FeatureUnavailable, LoadingState, SlowNotice } from '@/components/ui/states';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import {
+  REVIEW_GRADES,
+  addCard,
+  createDeck,
+  createNote,
+  deleteCard,
+  deleteDeck,
+  deleteNote,
+  loadDeck,
+  loadDecks,
+  loadDueCards,
+  loadNotes,
+  loadSavedCourses,
+  parseTags,
+  removeCourseFromLibrary,
+  reviewCard,
+  updateNote,
+  type Note,
+} from '@/lib/library';
 
+const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
+const input =
+  'w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue)]';
+const fmtDate = (iso: string) => (iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+
+type Tab = 'courses' | 'notes' | 'flashcards' | 'uploads';
+const TABS: { id: Tab; label: string; icon: typeof Bookmark }[] = [
+  { id: 'courses', label: 'Saved courses', icon: Bookmark },
+  { id: 'notes', label: 'Notes', icon: FileText },
+  { id: 'flashcards', label: 'Flashcards', icon: Layers },
+  { id: 'uploads', label: 'Uploads', icon: Upload },
+];
+
+/** The learner's own library: saved courses, notes and flashcard decks (previously invented items and counts). */
 export default function LibraryPage() {
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [tab, setTab] = useState<Tab>('courses');
 
-  const tabs = [
-    { id: 'all', label: 'All Items', count: 18 },
-    { id: 'uploads', label: 'Uploaded Files', count: 4 },
-    { id: 'classes', label: 'AI Classes', count: 5 },
-    { id: 'notes', label: 'Notes', count: 4 },
-    { id: 'flashcards', label: 'Flashcards', count: 3 },
-    { id: 'quizzes', label: 'Quizzes & Tests', count: 2 },
-  ];
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">My Library</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Courses you saved, your notes and your flashcards.</p>
+      </div>
 
-  const libraryItems = [
-    {
-      id: 'item-1',
-      title: 'Advanced Operating Systems & Kernel Threads',
-      type: 'classes',
-      category: 'AI-Generated Class',
-      badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200',
-      date: 'Sep 20, 2026',
-      details: '12 Topics • 48 Flashcards • 3 Quizzes',
-      href: '/library/generated-class/os-threads',
-    },
-    {
-      id: 'item-2',
-      title: 'CSC301_Lecture_Notes_Chapter_4.pdf',
-      type: 'uploads',
-      category: 'Uploaded File',
-      badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200',
-      date: 'Sep 18, 2026',
-      details: 'PDF • 4.2 MB • Processed Successfully',
-      href: '/library/upload',
-    },
-    {
-      id: 'item-3',
-      title: 'Macroeconomics Fiscal Policy & Inflation Formulas',
-      type: 'notes',
-      category: 'Notes',
-      badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200',
-      date: 'Sep 15, 2026',
-      details: 'Summary notes with key equations',
-      href: '/library/generated-class/macro-notes',
-    },
-    {
-      id: 'item-4',
-      title: 'Data Structures Quick-Recall Flashcards',
-      type: 'flashcards',
-      category: 'Flashcards',
-      badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200',
-      date: 'Sep 12, 2026',
-      details: '35 Cards • High Retention Rate',
-      href: '/library/generated-class/ds-flashcards',
-    },
-  ];
+      <div role="tablist" aria-label="Library sections" className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              tab === t.id
+                ? 'bg-[var(--color-brand-blue)] text-white shadow-xs'
+                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            <t.icon className="w-3.5 h-3.5" aria-hidden="true" />
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-  const filteredItems = libraryItems.filter(item => {
-    const matchesTab = activeTab === 'all' || item.type === activeTab;
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+      <div role="tabpanel">
+        {tab === 'courses' && <SavedCourses />}
+        {tab === 'notes' && <Notes />}
+        {tab === 'flashcards' && <Flashcards />}
+        {tab === 'uploads' && (
+          <FeatureUnavailable
+            title="Uploaded materials aren't listed yet"
+            description="Uploads aren't linked to your account yet, so they can't be listed or managed here, and generated study content isn't saved."
+            action={
+              <Link href="/library/upload" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
+                About uploads
+              </Link>
+            }
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+function SavedCourses() {
+  const list = useApiQuery(() => loadSavedCourses(), []);
+  const remove = useAsyncAction(async (_signal: AbortSignal, courseId: string) => {
+    await removeCourseFromLibrary(courseId);
+    list.retry();
+  });
+
+  if (list.isLoading) return <LoadingState label="Loading saved courses…" />;
+  if (list.error && !list.data) return <ErrorState error={list.error} onRetry={list.retry} />;
+  const items = list.data ?? [];
+  if (items.length === 0)
+    return (
+      <EmptyState
+        icon={Bookmark}
+        title="No saved courses yet"
+        description="Open a course and choose “Save to library” to keep it here."
+        action={<Link href="/learn" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">Browse courses</Link>}
+      />
+    );
+
+  return (
+    <div className="space-y-3">
+      {remove.error && <ErrorState error={remove.error} compact />}
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {items.map((c) => (
+          <li key={c.courseId} className={`${card} p-5 flex flex-col gap-2`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {c.available ? (
+                  <Link href={`/learn/${encodeURIComponent(c.courseId)}`} className="text-sm font-bold text-gray-900 dark:text-white hover:text-[var(--color-brand-blue)]">
+                    {c.title}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-bold text-gray-500">{c.title}</p>
+                )}
+                {c.savedAt && <p className="text-[11px] text-gray-500 mt-0.5">Saved {fmtDate(c.savedAt)}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => void remove.run(c.courseId)}
+                disabled={remove.isPending}
+                aria-label={`Remove ${c.title} from library`}
+                className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+            {c.description && <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{c.description}</p>}
+          </li>
+        ))}
+      </ul>
+      {list.error && <Alert variant="warning">Showing the last loaded list; the latest could not be loaded.</Alert>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+interface NoteDraft {
+  id: string | null; // null: new note
+  title: string;
+  content: string;
+  tags: string;
+}
+const emptyDraft: NoteDraft = { id: null, title: '', content: '', tags: '' };
+
+function Notes() {
+  const list = useApiQuery(() => loadNotes(), []);
+  const [draft, setDraft] = useState<NoteDraft | null>(null);
+
+  const save = useAsyncAction(async (_signal: AbortSignal, d: NoteDraft) => {
+    const body = { title: d.title.trim(), content: d.content.trim(), tags: parseTags(d.tags) };
+    const res = d.id ? await updateNote(d.id, body) : await createNote(body);
+    setDraft(null);
+    list.retry();
+    return res;
+  });
+  const remove = useAsyncAction(async (_signal: AbortSignal, id: string) => {
+    await deleteNote(id);
+    list.retry();
+  });
+
+  const edit = (n: Note) => {
+    save.reset();
+    setDraft({ id: n.id, title: n.title, content: n.content, tags: n.tags.join(', ') });
+  };
+  const canSave = Boolean(draft && draft.title.trim() && draft.content.trim());
+
+  return (
+    <div className="space-y-4">
+      {!draft && (
+        <Button type="button" size="sm" onClick={() => { save.reset(); setDraft(emptyDraft); }}>
+          <Plus className="w-4 h-4" aria-hidden="true" /> New note
+        </Button>
+      )}
+
+      {draft && (
+        <form
+          className={`${card} p-5 space-y-3`}
+          aria-label={draft.id ? 'Edit note' : 'New note'}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSave) void save.run(draft);
+          }}
+        >
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Title</span>
+            <input className={input} value={draft.title} maxLength={255} onChange={(e) => setDraft({ ...draft, title: e.target.value })} required />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Note</span>
+            <textarea className={`${input} min-h-32`} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} required />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Tags (comma-separated, optional)</span>
+            <input className={input} value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} />
+          </label>
+          {save.isSlow && <SlowNotice />}
+          {save.error && <ErrorState error={save.error} compact />}
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" isLoading={save.isPending} disabled={!canSave}>
+              {draft.id ? 'Save changes' : 'Save note'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setDraft(null)} disabled={save.isPending}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {remove.error && <ErrorState error={remove.error} compact />}
+      {list.isLoading ? (
+        <LoadingState label="Loading notes…" />
+      ) : list.error && !list.data ? (
+        <ErrorState error={list.error} onRetry={list.retry} />
+      ) : (list.data ?? []).length === 0 ? (
+        !draft && <EmptyState icon={FileText} title="No notes yet" description="Notes you write are saved to your account." />
+      ) : (
+        <ul className="space-y-3">
+          {(list.data ?? []).map((n) => (
+            <li key={n.id} className={`${card} p-5 space-y-2`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">{n.title}</h3>
+                  {n.updatedAt && <p className="text-[11px] text-gray-500">Updated {fmtDate(n.updatedAt)}</p>}
+                </div>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => edit(n)} aria-label={`Edit ${n.title}`} className="p-2 rounded-xl text-gray-400 hover:text-[var(--color-brand-blue)] hover:bg-blue-50 dark:hover:bg-blue-950/30">
+                    <Pencil className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void remove.run(n.id)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete ${n.title}`}
+                    className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line">{n.content}</p>
+              {n.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {n.tags.map((t) => (
+                    <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.error && list.data && <Alert variant="warning">Showing the last loaded notes; the latest could not be loaded.</Alert>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+function Flashcards() {
+  const [openDeck, setOpenDeck] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+
+  if (reviewing) return <Review onDone={() => setReviewing(false)} />;
+  if (openDeck) return <DeckDetail id={openDeck} onBack={() => setOpenDeck(null)} />;
+  return <DeckList onOpen={setOpenDeck} onReview={() => setReviewing(true)} />;
+}
+
+function DeckList({ onOpen, onReview }: { onOpen: (id: string) => void; onReview: () => void }) {
+  const decks = useApiQuery(() => loadDecks(), []);
+  const due = useApiQuery(() => loadDueCards(), []);
+  const [form, setForm] = useState<{ title: string; description: string } | null>(null);
+
+  const create = useAsyncAction(async (_signal: AbortSignal, f: { title: string; description: string }) => {
+    const res = await createDeck({ title: f.title.trim(), description: f.description.trim(), category: '' });
+    setForm(null);
+    decks.retry();
+    return res;
+  });
+  const remove = useAsyncAction(async (_signal: AbortSignal, id: string) => {
+    await deleteDeck(id);
+    decks.retry();
+    due.retry();
+  });
+
+  const dueCount = due.data?.length;
+
+  return (
+    <div className="space-y-4">
+      <div className={`${card} p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+        <div>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Review today</h2>
+          <p className="text-xs text-gray-500" aria-live="polite">
+            {due.isLoading ? 'Checking due cards…' : due.error ? 'Due cards could not be loaded.' : dueCount ? `${dueCount} card${dueCount === 1 ? '' : 's'} due` : 'No cards are due.'}
+          </p>
+        </div>
+        {due.error ? (
+          <Button type="button" size="sm" variant="outline" onClick={due.retry}>Try again</Button>
+        ) : (
+          <Button type="button" size="sm" onClick={onReview} disabled={!dueCount}>
+            <RotateCcw className="w-4 h-4" aria-hidden="true" /> Start review
+          </Button>
+        )}
+      </div>
+
+      {!form ? (
+        <Button type="button" size="sm" variant="outline" onClick={() => { create.reset(); setForm({ title: '', description: '' }); }}>
+          <Plus className="w-4 h-4" aria-hidden="true" /> New deck
+        </Button>
+      ) : (
+        <form
+          className={`${card} p-5 space-y-3`}
+          aria-label="New deck"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (form.title.trim()) void create.run(form);
+          }}
+        >
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Deck title</span>
+            <input className={input} value={form.title} maxLength={255} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Description (optional)</span>
+            <input className={input} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </label>
+          {create.error && <ErrorState error={create.error} compact />}
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" isLoading={create.isPending} disabled={!form.title.trim()}>Create deck</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setForm(null)} disabled={create.isPending}>Cancel</Button>
+          </div>
+        </form>
+      )}
+
+      {remove.error && <ErrorState error={remove.error} compact />}
+      {decks.isLoading ? (
+        <LoadingState label="Loading decks…" />
+      ) : decks.error && !decks.data ? (
+        <ErrorState error={decks.error} onRetry={decks.retry} />
+      ) : (decks.data ?? []).length === 0 ? (
+        <EmptyState icon={Layers} title="No flashcard decks yet" description="Create a deck, add cards, then review them here." />
+      ) : (
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {(decks.data ?? []).map((d) => (
+            <li key={d.id} className={`${card} p-5 flex items-start justify-between gap-3`}>
+              <button type="button" onClick={() => onOpen(d.id)} className="text-left min-w-0 flex-1">
+                <span className="block text-sm font-bold text-gray-900 dark:text-white hover:text-[var(--color-brand-blue)]">{d.title}</span>
+                <span className="block text-[11px] text-gray-500 mt-0.5">{d.cards.length} card{d.cards.length === 1 ? '' : 's'}</span>
+                {d.description && <span className="block text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{d.description}</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => void remove.run(d.id)}
+                disabled={remove.isPending}
+                aria-label={`Delete deck ${d.title}`}
+                className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function DeckDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const deck = useApiQuery(() => loadDeck(id), [id]);
+  const [q, setQ] = useState('');
+  const [a, setA] = useState('');
+
+  const add = useAsyncAction(async () => {
+    const res = await addCard(id, q.trim(), a.trim());
+    setQ('');
+    setA('');
+    deck.retry();
+    return res;
+  });
+  const remove = useAsyncAction(async (_signal: AbortSignal, cardId: string) => {
+    await deleteCard(cardId);
+    deck.retry();
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 pb-12">
-      
-      {/* Header & Upload Button */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-            <span>My Library & Uploads</span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-[var(--color-brand-blue)] font-bold flex items-center gap-1.5 shadow-xs">
-              <FolderOpen className="w-3.5 h-3.5" />
-              <Layers className="w-3.5 h-3.5" />
-              <span>Hub</span>
-            </span>
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Manage your uploaded materials, AI-generated courses, flashcards, notes, and saved questions.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            title="Library Help & Guide"
-            className="p-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
+    <div className="space-y-4">
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
+        <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" /> All decks
+      </button>
+      {deck.isLoading ? (
+        <LoadingState layout="detail" label="Loading deck…" />
+      ) : deck.error && !deck.data ? (
+        <ErrorState error={deck.error} onRetry={deck.retry} />
+      ) : deck.data ? (
+        <>
+          <div>
+            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">{deck.data.title}</h2>
+            {deck.data.description && <p className="text-xs text-gray-500">{deck.data.description}</p>}
+          </div>
+          <form
+            className={`${card} p-5 space-y-3`}
+            aria-label="Add card"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (q.trim() && a.trim()) void add.run();
+            }}
           >
-            <HelpCircle className="w-4 h-4" />
-          </button>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Question</span>
+              <textarea className={input} value={q} onChange={(e) => setQ(e.target.value)} required />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Answer</span>
+              <textarea className={input} value={a} onChange={(e) => setA(e.target.value)} required />
+            </label>
+            {add.error && <ErrorState error={add.error} compact />}
+            <Button type="submit" size="sm" isLoading={add.isPending} disabled={!q.trim() || !a.trim()}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add card
+            </Button>
+          </form>
+          {remove.error && <ErrorState error={remove.error} compact />}
+          {deck.data.cards.length === 0 ? (
+            <EmptyState icon={Layers} title="This deck has no cards" description="Add a question and answer above." />
+          ) : (
+            <ul className="space-y-2">
+              {deck.data.cards.map((c) => (
+                <li key={c.id} className={`${card} p-4 flex items-start justify-between gap-3`}>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-pre-line">{c.question}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-line">{c.answer}</p>
+                    {c.nextReviewDate && <p className="text-[10px] text-gray-400">Next review {fmtDate(c.nextReviewDate)}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void remove.run(c.id)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete card ${c.question}`}
+                    className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}
 
-          <Link
-            href="/library/upload"
-            className="px-5 py-3 rounded-2xl bg-[var(--color-brand-blue)] text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Upload New Material</span>
-          </Link>
-        </div>
-      </div>
+/** Cards due today, one at a time: reveal the answer, then grade it. The server schedules the next review (SM-2). */
+function Review({ onDone }: { onDone: () => void }) {
+  // Loaded once: graded cards move out of today's queue on the server, so the session works through this snapshot
+  const due = useApiQuery(() => loadDueCards(), []);
+  const [index, setIndex] = useState(0);
+  const [shown, setShown] = useState(false);
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-[#111827] p-4 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search library items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue)]"
-          />
-        </div>
+  const grade = useAsyncAction(async (_signal: AbortSignal, cardId: string, quality: number) => {
+    const res = await reviewCard(cardId, quality);
+    setShown(false);
+    setIndex((i) => i + 1);
+    return res;
+  });
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full pb-1 sm:pb-0 scrollbar-none">
-          <div className="flex items-center gap-1 text-gray-400 px-1">
-            <Filter className="w-3.5 h-3.5" />
-          </div>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === tab.id
-                  ? 'bg-[var(--color-brand-blue)] text-white shadow-xs'
-                  : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-blue-700 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+  const back = (
+    <button type="button" onClick={onDone} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
+      <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" /> All decks
+    </button>
+  );
+  if (due.isLoading) return <div className="space-y-4">{back}<LoadingState layout="detail" label="Loading due cards…" /></div>;
+  if (due.error && !due.data) return <div className="space-y-4">{back}<ErrorState error={due.error} onRetry={due.retry} /></div>;
 
-      {/* Quick Action Feature Toolbar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-[var(--color-brand-blue)]">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white">Generate Notes</h4>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">Summarize readings via AI</p>
-            </div>
-          </div>
-          <Plus className="w-4 h-4 text-gray-400 hover:text-[var(--color-brand-blue)] cursor-pointer transition-colors" />
-        </div>
-
-        <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white">AI Flashcards</h4>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">Build high-recall decks</p>
-            </div>
-          </div>
-          <Plus className="w-4 h-4 text-gray-400 hover:text-purple-600 cursor-pointer transition-colors" />
-        </div>
-
-        <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <CheckSquare className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white">Practice Quiz</h4>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">Test your mastery</p>
-            </div>
-          </div>
-          <Plus className="w-4 h-4 text-gray-400 hover:text-amber-600 cursor-pointer transition-colors" />
-        </div>
-      </div>
-
-      {/* Library Items List */}
+  const cards = due.data ?? [];
+  const current = cards[index];
+  if (!current)
+    return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
-                    {item.category}
-                  </span>
-                  <span className="text-[11px] text-gray-400 font-medium">{item.date}</span>
-                </div>
+        {back}
+        <EmptyState icon={RotateCcw} title={cards.length ? 'Review complete' : 'No cards are due'} description={cards.length ? `You reviewed ${cards.length} card${cards.length === 1 ? '' : 's'}.` : 'Come back when cards are due.'} />
+      </div>
+    );
 
-                <h3 className="text-base font-extrabold text-gray-900 dark:text-white group-hover:text-[var(--color-brand-blue)] transition-colors">
-                  {item.title}
-                </h3>
-
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {item.details}
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                <span className="text-[11px] text-gray-400 font-mono">ID: {item.id}</span>
-                <Link
-                  href={item.href}
-                  className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-[var(--color-brand-blue)] hover:text-white transition-colors flex items-center gap-1.5"
-                >
-                  <span>Open Item</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
+  return (
+    <div className="space-y-4">
+      {back}
+      <p className="text-xs text-gray-500">
+        Card {index + 1} of {cards.length}
+        {current.deckTitle && ` · ${current.deckTitle}`}
+      </p>
+      <div className={`${card} p-6 space-y-4`} aria-live="polite">
+        <p className="text-base font-semibold text-gray-900 dark:text-white whitespace-pre-line">{current.question}</p>
+        {shown ? (
+          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line border-t border-gray-100 dark:border-gray-800 pt-4">{current.answer}</p>
+        ) : (
+          <Button type="button" size="sm" variant="outline" onClick={() => setShown(true)}>Show answer</Button>
+        )}
+      </div>
+      {shown && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="How well did you remember?">
+          {REVIEW_GRADES.map((g) => (
+            <Button key={g.label} type="button" size="sm" variant={g.quality >= 4 ? 'primary' : 'outline'} disabled={grade.isPending} onClick={() => void grade.run(current.id, g.quality)}>
+              {g.label}
+            </Button>
           ))}
         </div>
-      </div>
-
+      )}
+      {grade.error && <ErrorState error={grade.error} compact />}
     </div>
   );
 }

@@ -714,3 +714,36 @@ The UI maps responses by status, with message checks only where the backend uses
 | `npx tsc --noEmit` | ✅ |
 | eslint `src` | 417 errors (unchanged baseline) / 63 warnings (was 87: the replaced pages had unused imports). Changed files: clean. |
 | `npx next build` | ✅ |
+
+---
+
+## Batch 30 (2026-10-26): Frontend integration of every remaining learner and admin route
+
+**Status:** ✅ Verified in a real browser (production build) against the local backend; `/ai` also through the real AI service with a mock model. Nothing committed or deployed.
+
+- **Learner pages rebuilt on the real API** (demo data removed): dashboard stats sharing, notifications, settings/profile, progress, history, practice and exams, library (saved courses, notes, flashcards with SM-2 review), `/ai` (assistant conversations, tutor sessions, eight study tools, companion view), planner (sessions, goals, recorded sessions), support (accurate help; reports and feedback by email while the backend answers 501), premium (honest status; no prices or payments).
+- **Admin:** `/admin/assessments` (create, edit and delete the quizzes, tests and exams learners take, with answer keys) and `/admin/moderation` (report and AI-content queues with resolve, reject, approve and delete). No admin section is "not connected" any more.
+- **Removed:** the `ai/components`, `practice/components` and `exams/components` prototype folders; invented library items, planner week, streak, exams, prices, receipts, help articles describing non-existent features, and the "report received" screen that sent nothing.
+- **Defect found in the browser:** an effect written as `useEffect(() => el.scrollIntoView(...))` crashed `/ai` on the first message. Current Chrome returns a Promise from `scrollIntoView`, and React calls an effect's return value as its cleanup.
+- **Backend changes this required** (smallest fixes, each with a spec):
+  - Prisma-backed services (calendar, reports and feedback, subscriptions, usage) answered 500 because their models don't exist; they now answer 501.
+  - `POST /planner` adds a learner's session; `/planner/generate`, which stored fixed sample sessions as an "AI plan", answers 501.
+  - Goal updates strip `id`/`userId` from the body.
+  - Admin-only `GET /{quizzes|tests|exams}/manage/all|:id`, because admins could edit but not read them.
+  - Earlier in the batch: coin transactions record their type, assessment answer keys are kept from learners, and file listing and deletion are admin-only.
+- **Checks:**
+
+  | Check | Result |
+  |---|---|
+  | Frontend unit tests | 157/157 |
+  | `tsc` | Clean |
+  | ESLint (`src`) | 400 errors / 17 warnings, down from 405/30; all pre-existing |
+  | Browser | `ai` 10/10, `learner-rest` 11/11, `admin` 9/9, `library` 11/11, `learner-core` 11/11, `practice` 7/7 |
+  | Backend vitest | 581/581 |
+  | AI service | 33/33 |
+
+- **Blockers (need approval or a provider):**
+  - **Schema:** attempt history, the uploads owner column, calendar, report, feedback and subscription tables.
+  - **Payments:** a payment provider with server-side verification.
+  - **Email:** a verified domain for production email.
+  - **Not built:** AI chat memory, streaming and voice; admin announcements reaching learners (they write to `admin_notifications`, which learners never read).

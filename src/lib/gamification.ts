@@ -60,8 +60,10 @@ export function toCoinLedger(res: unknown): LedgerEntry[] {
   return rows(res)
     .filter((r) => typeof r.id === 'string')
     .map((r) => {
-      const amount = Math.abs(num(r.amount));
-      return { id: r.id as string, amount: str(r.type).toUpperCase() === 'SPEND' ? -amount : amount, source: str(r.source), description: str(r.description), at: str(r.createdAt) };
+      // Spending is stored negative by CoinsService; admin deductions are negative with type ADMIN_DEDUCT.
+      const raw = num(r.amount);
+      const deducts = /SPEND|DEDUCT/.test(str(r.type).toUpperCase());
+      return { id: r.id as string, amount: raw < 0 || !deducts ? raw : -raw, source: str(r.source), description: str(r.description), at: str(r.createdAt) };
     })
     .sort(byDateDesc);
 }

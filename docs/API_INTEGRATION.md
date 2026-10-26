@@ -76,7 +76,30 @@ An automated comparison of `src/lib/api.ts` against the backend's `@Controller` 
   - Onboarding.
   - Account state: freeze, unfreeze and delete.
   - Forgot and reset password, and change password.
-- **Not wired:** the learner content pages (dashboard, learn, practice, exams, library, AI, planner, progress, history, notifications). They are mock-ups, now shown only to signed-in learners.
+- **Route checklist (2026-10-26).** "Browser" means a real production build against the local backend (and, for `/ai`, the real AI service with a mock model), in `e2e/browser/*.mjs`. Unavailable states come from backend 501 `FEATURE_UNAVAILABLE`; none simulates success.
+
+  | Route | Client (lib) | Status | Browser check | Remaining blocker |
+  |---|---|---|---|---|
+  | `/dashboard` | `learning.ts` (`sharedLearnerStats`) | ✅ | `learner-core` | — |
+  | `/learn`, `/learn/[courseId]`, `/learn/lesson/[id]` | `learning.ts`, `library.ts` | ✅ incl. Save to library | `library`, backend `learner-learning` | — |
+  | `/learn/lesson/[id]/ai-mode` | — | Unavailable state | — | AI live class not implemented |
+  | `/practice`, `/exams` | `practice.ts` | ✅ real grading; rewards once | `practice`, `admin` | Attempt history needs attempt tables (schema) |
+  | `/library` | `library.ts` | ✅ saved courses, notes, flashcards + review | `library` | Uploads need a file owner column (schema, B4); favourites not in UI |
+  | `/library/upload`, `/processing`, `/generated-class/[id]` | — | Unavailable states | — | Same as uploads |
+  | `/ai` | `ai.ts` | ✅ assistant, tutor sessions, 8 study tools, companion view | `ai` | No streaming; chat has no memory (backend sends one message at a time); companion settings unused by the AI; voice 501 |
+  | `/planner` | `planner.ts` | ✅ sessions, goals, recorded sessions | `learner-rest` | Calendar tables missing (501); AI plan generation 501 |
+  | `/progress`, `/history` | `gamification.ts`, `history.ts` | ✅ | `learner-core` | Assessment history (schema) |
+  | `/notifications` | `notifications.ts` | ✅ | `learner-core` | — |
+  | `/settings` | `profile.ts` | ✅ (privacy: unavailable) | `learner-core` | Privacy settings not stored |
+  | `/support` | `support.ts` | ✅ help; reports/feedback by email while the backend answers 501 | `learner-rest` | Report/feedback tables missing |
+  | `/premium` | `support.ts` | ✅ honest status | `learner-rest` | Payment provider + verification design; subscription tables |
+  | `/account-state`, `/onboarding`, `/auth/*` | `learner-auth.ts` | ✅ | `registration`, backend `learner-session` | Production email needs a verified domain |
+  | `/admin` | `admin-api.ts` | ✅ verified counts only | backend `frontend-clients` | Analytics/finance endpoints return invented figures; not shown |
+  | `/admin/users`, `/admin/users/[id]` | `admin-api.ts` | ✅ | backend `frontend-clients` | — |
+  | `/admin/content`, `/admin/content/[id]` | `admin-api.ts` | ✅ | backend `frontend-clients` | — |
+  | `/admin/assessments` | `admin-api.ts`, `admin-assessments.ts` | ✅ quizzes/tests/exams CRUD with answer keys | `admin` | — |
+  | `/admin/moderation` | `admin-api.ts` | ✅ queues + actions (empty: nothing feeds them yet) | `admin` | Learner reports 501; AI output not stored for review |
+  | `/admin/settings`, `/admin/profile` | `admin-api.ts` | ✅ read-only | — | — |
 - **Learner session model:**
   - The token is stored under `accessToken`.
   - `LearnerSessionProvider` confirms it with `GET /auth/me` on load.
