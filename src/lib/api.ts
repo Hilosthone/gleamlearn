@@ -3446,3 +3446,149 @@ export const usageApi = {
   getQuizUsage: (token?: string) => 
     apiRequest<any>('/usage/quizzes', { method: 'GET', token }),
 };
+// ==========================================
+// PROFILE PICTURE, PERSONAL COURSES, UPLOADED MATERIALS (learner-owned; every route acts on the signed-in learner)
+// ==========================================
+
+export interface UploadOptions {
+  onProgress?: (fraction: number) => void;
+  signal?: AbortSignal;
+}
+
+export type AvatarResponse =
+  | { kind: 'default' }
+  | { kind: 'preset'; presetId: string }
+  | { kind: 'upload'; imageUrl: string; expiresAt: string };
+
+export const avatarApi = {
+  get: () => apiRequest<AvatarResponse>('/users/me/avatar', { method: 'GET' }),
+  choosePreset: (presetId: string) => apiRequest<AvatarResponse>('/users/me/avatar', { method: 'PUT', body: { presetId } }),
+  /** PNG, JPEG or WebP up to 2 MB (checked by content on the server). */
+  upload: (file: File, options: UploadOptions = {}) => {
+    const form = new FormData();
+    form.append('image', file);
+    return learnerHttp.upload<AvatarResponse>('/users/me/profile-picture', form, options);
+  },
+  reset: () => apiRequest<AvatarResponse>('/users/me/profile-picture', { method: 'DELETE' }),
+};
+
+export interface PersonalCourseInput {
+  title: string;
+  description?: string;
+  subjects?: string[];
+  level?: string;
+  examGoals?: string[];
+  objectives?: string[];
+  archived?: boolean;
+}
+
+const pc = (id: string) => `/personal-courses/${encodeURIComponent(id)}`;
+
+export const personalCoursesApi = {
+  list: () => apiRequest<unknown>('/personal-courses', { method: 'GET' }),
+  get: (id: string) => apiRequest<unknown>(pc(id), { method: 'GET' }),
+  create: (input: PersonalCourseInput) => apiRequest<unknown>('/personal-courses', { method: 'POST', body: input }),
+  update: (id: string, input: Partial<PersonalCourseInput>) => apiRequest<unknown>(pc(id), { method: 'PATCH', body: input }),
+  remove: (id: string) => apiRequest<unknown>(pc(id), { method: 'DELETE' }),
+  addModule: (id: string, input: { title: string; notes?: string }) => apiRequest<unknown>(`${pc(id)}/modules`, { method: 'POST', body: input }),
+  updateModule: (id: string, moduleId: string, input: { title?: string; notes?: string; isCompleted?: boolean }) =>
+    apiRequest<unknown>(`${pc(id)}/modules/${encodeURIComponent(moduleId)}`, { method: 'PATCH', body: input }),
+  removeModule: (id: string, moduleId: string) => apiRequest<unknown>(`${pc(id)}/modules/${encodeURIComponent(moduleId)}`, { method: 'DELETE' }),
+};
+
+export const materialsApi = {
+  list: (personalCourseId?: string) =>
+    apiRequest<unknown>(`/materials${personalCourseId ? `?personalCourseId=${encodeURIComponent(personalCourseId)}` : ''}`, { method: 'GET' }),
+  /** PDF, Word (.docx) or plain text up to 15 MB (checked by content on the server). */
+  upload: (file: File, personalCourseId?: string, options: UploadOptions = {}) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (personalCourseId) form.append('personalCourseId', personalCourseId);
+    return learnerHttp.upload<unknown>('/materials', form, { ...options, timeoutMs: 5 * 60_000 });
+  },
+  /** A short-lived link to open or download the learner's own file. */
+  access: (id: string) =>
+    apiRequest<{ url: string; expiresAt: string; originalName: string; mimeType: string }>(`/materials/${encodeURIComponent(id)}/access`, { method: 'GET' }),
+  remove: (id: string) => apiRequest<unknown>(`/materials/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
+/** Links the API returns as paths (local storage) are relative to the API base URL. */
+export const resolveApiUrl = (url: string) => (url.startsWith('/') ? `${API_BASE_URL.replace(/\/+$/, '')}${url}` : url);
+
+// ==========================================
+// SELF-SERVICE LEARNING (learner-owned; every route acts on the signed-in learner)
+// ==========================================
+
+export type LearningKind = 'lesson' | 'summary' | 'notes' | 'study_plan' | 'key_concepts' | 'explanation' | 'quiz' | 'exam' | 'flashcards' | 'course_plan';
+export type LearningSourceType = 'material' | 'text' | 'course' | 'module' | 'resource' | 'youtube' | 'note';
+
+export interface GenerateLearningPayload {
+  /** Client-generated UUID: a retried request returns the first result instead of generating again. */
+  requestId: string;
+  kind: LearningKind;
+  sourceType: LearningSourceType;
+  sourceId?: string;
+  text?: string;
+  title?: string;
+  personalCourseId?: string;
+  moduleId?: string;
+  options?: {
+    count?: number;
+    difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+    level?: string;
+    examGoal?: string;
+    objective?: string;
+    subject?: string;
+    focus?: string;
+    durationMinutes?: number;
+    feedbackMode?: 'after_submit' | 'immediate';
+  };
+}
+
+const lq = (params: Record<string, string | undefined>) => {
+  const q = Object.entries(params).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`).join('&');
+  return q ? `?${q}` : '';
+};
+
+export const learningApi = {
+  generate: (payload: GenerateLearningPayload) => apiRequest<unknown>('/learning/generate', { method: 'POST', body: payload }),
+  resources: (filter: { personalCourseId?: string; kind?: string; materialId?: string; youtubeSessionId?: string } = {}) =>
+    apiRequest<unknown>(`/learning/resources${lq(filter)}`, { method: 'GET' }),
+  resource: (id: string) => apiRequest<unknown>(`/learning/resources/${encodeURIComponent(id)}`, { method: 'GET' }),
+  updateResource: (id: string, patch: { title?: string; completed?: boolean }) => apiRequest<unknown>(`/learning/resources/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch }),
+  completeResource: (id: string) => apiRequest<unknown>(`/learning/resources/${encodeURIComponent(id)}/complete`, { method: 'POST' }),
+  deleteResource: (id: string) => apiRequest<unknown>(`/learning/resources/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  material: (id: string) => apiRequest<unknown>(`/materials/${encodeURIComponent(id)}`, { method: 'GET' }),
+  materialText: (id: string) => apiRequest<unknown>(`/materials/${encodeURIComponent(id)}/text`, { method: 'GET' }),
+  addTextMaterial: (title: string, text: string, personalCourseId?: string) =>
+    apiRequest<unknown>('/materials/text', { method: 'POST', body: { title, text, ...(personalCourseId ? { personalCourseId } : {}) } }),
+  processMaterial: (id: string) => apiRequest<unknown>(`/materials/${encodeURIComponent(id)}/process`, { method: 'POST' }),
+};
+
+export const learnerAssessmentsApi = {
+  list: (kind?: 'quiz' | 'exam', personalCourseId?: string) => apiRequest<unknown>(`/learner-assessments${lq({ kind, personalCourseId })}`, { method: 'GET' }),
+  get: (id: string) => apiRequest<unknown>(`/learner-assessments/${encodeURIComponent(id)}`, { method: 'GET' }),
+  remove: (id: string) => apiRequest<unknown>(`/learner-assessments/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  start: (id: string) => apiRequest<unknown>(`/learner-assessments/${encodeURIComponent(id)}/attempts`, { method: 'POST' }),
+  attempts: (assessmentId?: string) => apiRequest<unknown>(`/learner-assessments/attempts${lq({ assessmentId })}`, { method: 'GET' }),
+  attempt: (attemptId: string) => apiRequest<unknown>(`/learner-assessments/attempts/${encodeURIComponent(attemptId)}`, { method: 'GET' }),
+  save: (attemptId: string, answers: Record<string, string>) => apiRequest<unknown>(`/learner-assessments/attempts/${encodeURIComponent(attemptId)}`, { method: 'PATCH', body: { answers } }),
+  submit: (attemptId: string, answers: Record<string, string>) =>
+    apiRequest<unknown>(`/learner-assessments/attempts/${encodeURIComponent(attemptId)}/submit`, { method: 'POST', body: { answers } }),
+};
+
+export const youtubeSessionsApi = {
+  create: (payload: { url: string; title?: string; goal?: string; level?: string; subject?: string; personalCourseId?: string }) =>
+    apiRequest<unknown>('/youtube-sessions', { method: 'POST', body: payload }),
+  list: () => apiRequest<unknown>('/youtube-sessions', { method: 'GET' }),
+  get: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}`, { method: 'GET' }),
+  remove: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  setTranscript: (id: string, text: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/transcript`, { method: 'PUT', body: { text } }),
+  refetchTranscript: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/transcript/fetch`, { method: 'POST' }),
+  messages: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/messages`, { method: 'GET' }),
+  ask: (id: string, question: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/ask`, { method: 'POST', body: { question } }),
+};
+
+export const globalSearchApi = {
+  everything: (q: string, signal?: AbortSignal) => apiRequest<unknown>(`/search/everything${lq({ q })}`, { method: 'GET', signal }),
+};

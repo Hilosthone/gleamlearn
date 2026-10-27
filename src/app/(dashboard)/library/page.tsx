@@ -2,10 +2,15 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Bookmark, FileText, Layers, Plus, RotateCcw, Trash2, Upload, ArrowLeft, Pencil } from 'lucide-react';
+import { Bookmark, FileText, FolderPlus, Layers, PlaySquare, Plus, Sparkles, ClipboardCheck, RotateCcw, Trash2, Upload, ArrowLeft, Pencil } from 'lucide-react';
+import { MaterialsPanel } from '@/components/library/MaterialsPanel';
+import { PersonalCourseList } from '@/components/library/PersonalCourses';
+import { GeneratedResources, MyAssessmentsLibrary } from '@/components/library/LibraryResources';
+import { YoutubeSessions } from '@/components/ai/YoutubeSessions';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { useUrlParam } from '@/hooks/useUrlParam';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
-import { EmptyState, ErrorState, FeatureUnavailable, LoadingState, SlowNotice } from '@/components/ui/states';
+import { EmptyState, ErrorState, LoadingState, SlowNotice } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import {
@@ -33,23 +38,30 @@ const input =
   'w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue)]';
 const fmtDate = (iso: string) => (iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
-type Tab = 'courses' | 'notes' | 'flashcards' | 'uploads';
+type Tab = 'courses' | 'mine' | 'lessons' | 'assessments' | 'notes' | 'flashcards' | 'uploads' | 'youtube';
 const TABS: { id: Tab; label: string; icon: typeof Bookmark }[] = [
   { id: 'courses', label: 'Saved courses', icon: Bookmark },
+  { id: 'mine', label: 'My courses', icon: FolderPlus },
+  { id: 'lessons', label: 'Lessons & study material', icon: Sparkles },
+  { id: 'assessments', label: 'Quizzes & exams', icon: ClipboardCheck },
   { id: 'notes', label: 'Notes', icon: FileText },
   { id: 'flashcards', label: 'Flashcards', icon: Layers },
-  { id: 'uploads', label: 'Uploads', icon: Upload },
+  { id: 'uploads', label: 'Uploaded materials', icon: Upload },
+  { id: 'youtube', label: 'YouTube sessions', icon: PlaySquare },
 ];
 
 /** The learner's own library: saved courses, notes and flashcard decks (previously invented items and counts). */
 export default function LibraryPage() {
-  const [tab, setTab] = useState<Tab>('courses');
+  // ?tab=youtube etc. (links from search and other pages) opens that section until the learner picks another
+  const wanted = useUrlParam('tab');
+  const [picked, setTab] = useState<Tab | null>(null);
+  const tab: Tab = picked ?? (TABS.some((t) => t.id === wanted) ? (wanted as Tab) : 'courses');
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-12">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">My Library</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Courses you saved, your notes and your flashcards.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Everything you study with: courses, lessons and notes you made, quizzes and exams, flashcards, files and videos.</p>
       </div>
 
       <div role="tablist" aria-label="Library sections" className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -76,17 +88,11 @@ export default function LibraryPage() {
         {tab === 'courses' && <SavedCourses />}
         {tab === 'notes' && <Notes />}
         {tab === 'flashcards' && <Flashcards />}
-        {tab === 'uploads' && (
-          <FeatureUnavailable
-            title="Uploaded materials aren't listed yet"
-            description="Uploads aren't linked to your account yet, so they can't be listed or managed here, and generated study content isn't saved."
-            action={
-              <Link href="/library/upload" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
-                About uploads
-              </Link>
-            }
-          />
-        )}
+        {tab === 'mine' && <PersonalCourseList />}
+        {tab === 'uploads' && <MaterialsPanel />}
+        {tab === 'lessons' && <GeneratedResources />}
+        {tab === 'assessments' && <MyAssessmentsLibrary />}
+        {tab === 'youtube' && <YoutubeSessions />}
       </div>
     </div>
   );

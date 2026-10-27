@@ -111,6 +111,24 @@ async function main() {
       assert(await p.eval(has('it is not drawn here')), 'no honesty note');
     });
 
+    await check("Using up one's own AI allowance shows a countdown; another learner is not affected", async () => {
+      // the backend allows 10 explain requests per minute per learner: use them up through the API
+      for (let i = 0; i < 12; i++) {
+        const r = await fetch(`${process.env.API_URL ?? 'http://127.0.0.1:5055/api/v1'}/ai/explain`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ input: 'x' }) });
+        if (r.status === 429) break;
+        await sleep(2100);
+      }
+      await clickIn(p, '[role=radio]', 'Explain');
+      await p.fill('form[aria-label=Explain] textarea', 'osmosis again');
+      await clickIn(p, 'form[aria-label=Explain] button', 'Explain');
+      await p.waitFor(has('You can send again in'), { label: 'countdown', timeout: 20000 });
+      assert(await p.eval(`document.querySelector('form[aria-label=Explain] button[type=submit]').disabled`), 'button not disabled');
+      assert(!/Too many requests/.test(await text(p)), 'old generic message');
+      const theirs = await api('/ai/explain', other, { method: 'POST', body: JSON.stringify({ input: 'osmosis' }) });
+      assert(theirs.status === 201, `other learner got ${theirs.status}`);
+      return 'own limit: countdown + disabled; other learner 201';
+    });
+
     await check('Companion tab shows the saved companion honestly (not used by the AI yet)', async () => {
       await clickIn(p, '[role=tab]', 'Companion');
       await p.waitFor(has('the AI does not use them in answers yet'), { timeout: 20000 });

@@ -183,7 +183,50 @@ export function createHttpClient(config: HttpClientConfig) {
     }
   }
 
-  return { request, baseUrl };
+  /**
+   * Multipart upload with progress (fetch cannot report upload progress, so this uses XMLHttpRequest). Same base
+   * URL, token, timeout, error mapping and 401 handling as request(). Never retried: an upload is not idempotent.
+   */
+  function upload<T>(
+    endpoint: string,
+    form: FormData,
+    { onProgress, signal, timeoutMs, method = 'POST' }: { onProgress?: (fraction: number) => void; signal?: AbortSignal; timeoutMs?: number; method?: 'POST' | 'PUT' } = {},
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) return reject(new ApiError('The upload was cancelled.', null, 'aborted'));
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, `${baseUrl}${endpoint}`);
+      const token = config.getToken?.();
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.timeout = timeoutMs ?? config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      const onAbort = () => xhr.abort();
+      signal?.addEventListener('abort', onAbort, { once: true });
+      const done = () => signal?.removeEventListener('abort', onAbort);
+      xhr.onabort = () => (done(), reject(new ApiError('The upload was cancelled.', null, 'aborted')));
+      xhr.ontimeout = () => (done(), reject(new ApiError(recoveryHint('timeout'), null, 'timeout')));
+      xhr.onerror = () => (done(), reject(new ApiError(recoveryHint('network'), null, 'network')));
+      xhr.onload = () => {
+        done();
+        let data: unknown = null;
+        try {
+          data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          data = null;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(data as T);
+        const wait = parseRetryAfter(xhr.getResponseHeader('Retry-After'));
+        const error = apiErrorFromResponse(xhr.status, xhr.statusText, data, wait !== undefined ? wait / 1000 : undefined);
+        if (error.kind === 'unauthorized') config.onUnauthorized?.(error);
+        reject(error);
+      };
+      xhr.send(form);
+    });
+  }
+
+  return { request, upload, baseUrl };
 }
 
 export type HttpClient = ReturnType<typeof createHttpClient>;

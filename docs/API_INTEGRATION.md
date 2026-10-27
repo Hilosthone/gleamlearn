@@ -80,17 +80,18 @@ An automated comparison of `src/lib/api.ts` against the backend's `@Controller` 
 
   | Route | Client (lib) | Status | Browser check | Remaining blocker |
   |---|---|---|---|---|
-  | `/dashboard` | `learning.ts` (`sharedLearnerStats`) | ✅ | `learner-core` | — |
+  | `/dashboard` | `learning.ts` (`sharedLearnerStats`, recommendations) | ✅ incl. recommended courses with reasons | `learner-core`, `learner-profile` | — |
   | `/learn`, `/learn/[courseId]`, `/learn/lesson/[id]` | `learning.ts`, `library.ts` | ✅ incl. Save to library | `library`, backend `learner-learning` | — |
   | `/learn/lesson/[id]/ai-mode` | — | Unavailable state | — | AI live class not implemented |
   | `/practice`, `/exams` | `practice.ts` | ✅ real grading; rewards once | `practice`, `admin` | Attempt history needs attempt tables (schema) |
-  | `/library` | `library.ts` | ✅ saved courses, notes, flashcards + review | `library` | Uploads need a file owner column (schema, B4); favourites not in UI |
+  | `/library` | `library.ts`, `learner-content.ts` | ✅ saved courses, my courses, notes, flashcards + review, uploaded materials | `library`, `learner-profile` | 2026-10-27 migration (pending) for my courses and materials; favourites not in UI |
+  | `/my-courses`, `/my-courses/[id]` | `learner-content.ts` | ✅ private courses: modules, notes, progress, materials | `learner-profile` | 2026-10-27 migration (pending) |
   | `/library/upload`, `/processing`, `/generated-class/[id]` | — | Unavailable states | — | Same as uploads |
   | `/ai` | `ai.ts` | ✅ assistant, tutor sessions, 8 study tools, companion view | `ai` | No streaming; chat has no memory (backend sends one message at a time); companion settings unused by the AI; voice 501 |
   | `/planner` | `planner.ts` | ✅ sessions, goals, recorded sessions | `learner-rest` | Calendar tables missing (501); AI plan generation 501 |
   | `/progress`, `/history` | `gamification.ts`, `history.ts` | ✅ | `learner-core` | Assessment history (schema) |
   | `/notifications` | `notifications.ts` | ✅ | `learner-core` | — |
-  | `/settings` | `profile.ts` | ✅ (privacy: unavailable) | `learner-core` | Privacy settings not stored |
+  | `/settings` | `profile.ts`, `avatar.ts` | ✅ incl. profile picture (presets + private upload); privacy unavailable | `learner-core`, `learner-profile` | Privacy settings not stored; 2026-10-27 migration (pending) for pictures |
   | `/support` | `support.ts` | ✅ help; reports/feedback by email while the backend answers 501 | `learner-rest` | Report/feedback tables missing |
   | `/premium` | `support.ts` | ✅ honest status | `learner-rest` | Payment provider + verification design; subscription tables |
   | `/account-state`, `/onboarding`, `/auth/*` | `learner-auth.ts` | ✅ | `registration`, backend `learner-session` | Production email needs a verified domain |

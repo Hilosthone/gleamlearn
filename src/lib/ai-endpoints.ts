@@ -19,6 +19,9 @@ const AI_ENDPOINT_PATTERNS: RegExp[] = [
   /^\/(quizzes|tests|exams)\/generate(-from-[a-z]+)?(\?|$)/,
   /^\/youtube\/[^/]+\/(process|reprocess)(\?|$)/,
   /^\/files\/[^/]+\/(process|reprocess)(\?|$)/,
+  /^\/materials\/[^/]+\/generate(\?|$)/,
+  /^\/learning\/generate(\?|$)/,
+  /^\/youtube-sessions\/[^/]+\/ask(\?|$)/,
   /^\/recommendations(\/[a-z]+)?(\?|$)/,
   /^\/planner\/(generate|regenerate)(\?|$)/,
 ];

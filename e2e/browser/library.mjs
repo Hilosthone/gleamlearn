@@ -174,10 +174,10 @@ async function main() {
       return 'both cards: repetitions 1, next review in the future';
     });
 
-    await check('Uploads tab says plainly it is not available (no fake files)', async () => {
-      await clickIn(p, '[role=tab]', 'Uploads');
-      await p.waitFor(`document.body.innerText.includes("Uploaded materials aren't listed yet")`);
-      assert(!/\.pdf|MB/.test(await text(p)), 'fake files shown');
+    await check('Uploaded materials starts empty: only real uploads are listed (uploads are tested in learner-profile.mjs)', async () => {
+      await clickIn(p, '[role=tab]', 'Uploaded materials');
+      await p.waitFor(`document.body.innerText.includes('No uploaded materials yet')`, { timeout: 20000 });
+      assert(!(await p.eval(`!!document.querySelector('ul[aria-label="Uploaded materials"]')`)), 'files listed for a new learner');
     });
 
     const unexpected = p.consoleErrors.filter((e) => !/status of 429/.test(e));

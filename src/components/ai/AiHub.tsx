@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, GraduationCap, MessageSquare, Plus, Send, Sparkles, Trash2, User, Wand2, Square } from 'lucide-react';
+import { ArrowLeft, Bot, GraduationCap, MessageSquare, PlaySquare, Plus, Send, Sparkles, Trash2, User, Wand2, Square } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { useUrlParam } from '@/hooks/useUrlParam';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { EmptyState, ErrorState, LoadingState, SlowNotice } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
@@ -27,22 +28,27 @@ import {
 import { relativeTime } from '@/lib/notifications';
 import type { ApiError } from '@/lib/api-error';
 import { loadCompanion } from '@/lib/profile';
+import { YoutubeSessions } from '@/components/ai/YoutubeSessions';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const input =
   'w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600';
 
-type Tab = 'chat' | 'tutor' | 'tools' | 'companion';
+type Tab = 'chat' | 'tutor' | 'youtube' | 'tools' | 'companion';
 const TABS: { id: Tab; label: string; icon: typeof Bot }[] = [
   { id: 'chat', label: 'Assistant', icon: MessageSquare },
   { id: 'tutor', label: 'Tutor sessions', icon: GraduationCap },
+  { id: 'youtube', label: 'YouTube', icon: PlaySquare },
   { id: 'tools', label: 'Study tools', icon: Wand2 },
   { id: 'companion', label: 'Companion', icon: Bot },
 ];
 
 /** The AI hub: real assistant conversations, tutor sessions and study tools through the backend (previously scripted demo screens). */
 export default function AiHub() {
-  const [tab, setTab] = useState<Tab>('chat');
+  // ?tab=youtube etc. (links from search and other pages) opens that section until the learner picks another
+  const wanted = useUrlParam('tab');
+  const [picked, setTab] = useState<Tab | null>(null);
+  const tab: Tab = picked ?? (TABS.some((t) => t.id === wanted) ? (wanted as Tab) : 'chat');
   const companion = useApiQuery(() => loadCompanion(), []);
   const name = companion.data?.name || 'GleamLearn AI';
 
@@ -84,6 +90,7 @@ export default function AiHub() {
       <div role="tabpanel">
         {tab === 'chat' && <Assistant />}
         {tab === 'tutor' && <Tutor />}
+        {tab === 'youtube' && <YoutubeSessions />}
         {tab === 'tools' && <Tools />}
         {tab === 'companion' && <CompanionPanel companion={companion} />}
       </div>

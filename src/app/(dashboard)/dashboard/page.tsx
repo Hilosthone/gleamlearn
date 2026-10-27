@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bell, BookOpen, Clock, Coins, Flame, GraduationCap, PenTool, Sparkles, Trophy, Zap } from 'lucide-react';
+import { ArrowRight, Bell, BookOpen, Clock, Coins, Compass, Flame, FolderPlus, GraduationCap, PenTool, Sparkles, Trophy, Zap } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { QueryState, LoadingState, EmptyState } from '@/components/ui/states';
+import { QueryState, LoadingState, EmptyState, ErrorState } from '@/components/ui/states';
 import { useLearnerSession } from '@/components/auth/LearnerSessionProvider';
-import { greeting, listEnrolledCourses, recentNotifications, sharedLearnerStats, studyMinutes } from '@/lib/learning';
+import { greeting, listEnrolledCourses, loadCourseRecommendations, recentNotifications, sharedLearnerStats, studyMinutes, type CourseRecommendations } from '@/lib/learning';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const minutes = useApiQuery(() => studyMinutes().catch(() => null), []);
   const courses = useApiQuery(() => listEnrolledCourses(), []);
   const notifications = useApiQuery(() => recentNotifications(3), []);
+  const recommended = useApiQuery(() => loadCourseRecommendations(), []);
 
   const s = stats.data;
   const streak = s?.streak?.currentStreak ?? null;
@@ -162,12 +163,15 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <section aria-labelledby="practice" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <Recommended query={recommended} />
+
+      <section aria-labelledby="practice" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <h2 id="practice" className="sr-only">Practice</h2>
         {[
           { href: '/practice', title: 'Practice quizzes', icon: PenTool },
           { href: '/exams', title: 'Exam preparation', icon: Trophy },
           { href: '/ai', title: 'AI tutor', icon: Sparkles },
+          { href: '/my-courses', title: 'My courses', icon: FolderPlus },
         ].map((t) => (
           <Link key={t.href} href={t.href} className={`${card} p-5 flex items-center justify-between gap-3 hover:shadow-md transition-shadow`}>
             <span className="flex items-center gap-3 text-sm font-bold text-gray-900 dark:text-white">
@@ -178,5 +182,63 @@ export default function DashboardPage() {
         ))}
       </section>
     </div>
+  );
+}
+
+const PROFILE_HINT: Record<string, string> = { 'education type': 'education type', class: 'class', level: 'level', 'exam goals': 'exam goals', 'course of study': 'course of study' };
+
+/** Catalogue courses that match the learner's profile, with the reason for each (GET /recommendations/courses). */
+function Recommended({ query }: { query: ReturnType<typeof useApiQuery<CourseRecommendations>> }) {
+  const r = query.data;
+  return (
+    <section className={`${card} p-6 space-y-4`} aria-labelledby="recommended">
+      <div className="flex items-center justify-between">
+        <h2 id="recommended" className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Compass className="w-4 h-4 text-[var(--color-brand-blue)]" aria-hidden="true" /> Recommended for you
+        </h2>
+        <Link href="/learn" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">Browse and search</Link>
+      </div>
+      {query.isLoading ? (
+        <LoadingState layout="list" rows={2} label="Finding courses for you…" />
+      ) : query.error && !r ? (
+        query.error.kind === 'not_implemented' ? <p className="text-xs text-gray-500">Recommendations aren&apos;t available yet.</p> : <ErrorState error={query.error} onRetry={query.retry} compact />
+      ) : r ? (
+        <>
+          {r.items.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {r.catalogueSize === 0 ? 'There are no courses in the catalogue yet.' : 'No catalogue courses match your profile yet.'}
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {r.items.slice(0, 4).map((c) => (
+                <li key={c.courseId}>
+                  <Link href={`/learn/${encodeURIComponent(c.courseId)}`} className="block p-4 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-[var(--color-brand-blue)] transition-colors space-y-1">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{c.title}</p>
+                    <p className="text-[11px] text-gray-500">{[c.track, c.level].filter(Boolean).join(' · ')}</p>
+                    <ul className="text-[11px] text-emerald-700 dark:text-emerald-400 space-y-0.5">
+                      {c.reasons.map((reason) => (
+                        <li key={reason}>✓ {reason}</li>
+                      ))}
+                    </ul>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {r.uncoveredExamGoals.length > 0 && (
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              No catalogue course covers {r.uncoveredExamGoals.join(', ')} yet.{' '}
+              <Link href="/my-courses" className="font-semibold text-[var(--color-brand-blue)] underline">Create your own course</Link> to organise your preparation.
+            </p>
+          )}
+          {r.missingProfile.length > 0 && (
+            <p className="text-xs text-gray-500">
+              Add your {r.missingProfile.map((m) => PROFILE_HINT[m] ?? m).join(', ')} in{' '}
+              <Link href="/settings" className="font-semibold text-[var(--color-brand-blue)] underline">Settings</Link> for better recommendations.
+            </p>
+          )}
+        </>
+      ) : null}
+    </section>
   );
 }

@@ -152,7 +152,7 @@ async function main() {
       await clickIn(p, TAB, 'Streak');
       await p.waitFor(`document.body.innerText.includes('Check in for today')`, { label: 'check-in button' });
       await p.click('Check in for today');
-      await p.waitFor(`document.body.innerText.includes('You have checked in today.')`, { label: 'checked in', timeout: 20000 });
+      await p.waitFor(`document.body.innerText.includes('Today counts towards your streak.')`, { label: 'checked in', timeout: 20000 });
       const today = new Date().toISOString().slice(0, 10);
       await p.waitFor(`!!document.querySelector('[aria-label="${today}, checked in"]')`, { label: 'calendar cell', timeout: 20000 });
       assert(/1 day\b/.test(await text(p)), 'streak not 1 day');

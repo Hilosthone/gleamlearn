@@ -116,14 +116,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { firstNameOf, signOut } from '@/lib/learner-auth';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
+import { MyAvatar } from '@/components/profile/Avatar';
+import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { LEARNER_STATS_CHANGED_EVENT, sharedLearnerStats } from '@/lib/learning';
 import { countUnreadNotifications, NOTIFICATIONS_CHANGED_EVENT } from '@/lib/notifications';
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? '?').slice(0, 2)).toUpperCase();
-}
 
 interface NavbarProps {
   onOpenMobileMenu: () => void;
@@ -211,9 +208,11 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
       </div>
 
       {/* Right side: Gamification stats, Theme Toggle, Notification & Profile */}
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-1 sm:gap-4">
+        <GlobalSearch />
+
         {/* Streak Counter Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-2xs">
+        <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-2xs">
           <Flame className="w-4 h-4 fill-orange-500 text-orange-500" />
           <span>{typeof streakDays === 'number' ? `${streakDays} Day${streakDays === 1 ? '' : 's'}` : '—'}</span>
           <span className="sr-only">streak</span>
@@ -259,9 +258,9 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <div className="relative">
           <button
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-            className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
+            className="w-9 h-9 rounded-full flex items-center justify-center shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
           >
-            <span aria-hidden="true">{displayName ? initialsOf(displayName) : '?'}</span>
+            <MyAvatar size={36} />
             <span className="sr-only">Open profile menu</span>
           </button>
 

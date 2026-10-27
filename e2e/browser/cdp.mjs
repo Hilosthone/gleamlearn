@@ -166,6 +166,14 @@ export class Page {
     if (!ok) throw new Error(`nothing to click: ${textOrSelector}`);
   }
 
+  /** Attaches local files to an <input type=file> (as if the user picked them) and fires its change event. */
+  async setFiles(selector, files) {
+    const { root } = await this.send('DOM.getDocument', { depth: 1 });
+    const { nodeId } = await this.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+    if (!nodeId) throw new Error(`no element ${selector}`);
+    await this.send('DOM.setFileInputFiles', { nodeId, files });
+  }
+
   async key(key, code = key, keyCode = 0) {
     for (const type of ['keyDown', 'keyUp']) await this.send('Input.dispatchKeyEvent', { type, key, code, windowsVirtualKeyCode: keyCode, text: type === 'keyDown' ? (key === 'Enter' ? '\r' : key.length === 1 ? key : undefined) : undefined });
   }

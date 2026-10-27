@@ -747,3 +747,75 @@ The UI maps responses by status, with message checks only where the backend uses
   - **Payments:** a payment provider with server-side verification.
   - **Email:** a verified domain for production email.
   - **Not built:** AI chat memory, streaming and voice; admin announcements reaching learners (they write to `admin_notifications`, which learners never read).
+
+---
+
+## Batch 31 (2026-10-27): Streak, AI limits, greeting, avatars, recommendations, personal courses, uploaded materials
+
+**Status:** ✅ Verified in a real browser against the local backend, the local AI service and a mock model. Storage was `STORAGE_DRIVER=local`, so nothing went to Cloudinary. The database migration is pending approval. Nothing is committed or deployed.
+
+- **Streak:** counts days of studying (lessons, quizzes, tests, exams, flashcard reviews, check-in), in the backend's time zone (`today` comes from `GET /streak`). The UI says what counts. Stats refresh after each counting action.
+- **AI:**
+  - per-learner rate limits;
+  - errors show the server's own wording by `code` (`errorMessage`);
+  - a 429 is retried automatically only when the wait is 5 seconds or less;
+  - the AI composers count down instead of letting learners resend.
+- **Navbar:** "Welcome back, Scholar {first name} 👋", taken from `fullName` only.
+- **Avatars:**
+  - Settings → Profile picture: 12 illustrated presets, upload with progress, cancel and retry, and removal;
+  - `MyAvatar` is used in the Navbar and the profile card.
+- **Uploads:** `http-client.upload()` (XHR) adds progress and cancellation to the existing client.
+- **Dashboard:** "Recommended for you" lists real catalogue courses with their reasons. It also shows missing profile details and exam goals the catalogue doesn't cover, with a link to create a course.
+- **My courses** (`/my-courses`, `/my-courses/[id]`): private courses with modules, notes, progress and materials.
+- **Library:** "My courses" and "Uploaded materials" tabs replace the "aren't listed yet" placeholder. Materials can be uploaded, opened (fresh signed link) and deleted, and AI notes, summaries and questions can be generated from them; results are not saved.
+- **Tests:**
+
+  | Check | Result |
+  |---|---|
+  | Frontend unit tests | 171/171 |
+  | `tsc` | Clean |
+  | ESLint | Baseline unchanged (400 errors / 17 warnings, all pre-existing) |
+  | Browser: `learner-profile` (new) | 14/14 |
+  | Browser: `ai` (with the rate-limit check) | 11/11 |
+  | Browser: `learner-core`, `library`, `learner-rest`, `admin`, `practice` | 11/11, 11/11, 11/11, 9/9, 7/7 |
+  | Backend | 634/634 |
+  | AI service | 41/41 |
+
+## Batch 32 (2026-10-27/28): Self-service learning, YouTube in the AI page, global search, Library as the hub
+
+**Status:** ✅ Verified in a real browser against the local backend, the local AI service and the **mock** model. The database was the disposable `gleamlearn_e2e`, storage was `STORAGE_DRIVER=local`, and YouTube calls were off (`YOUTUBE_NETWORK=off`). The migration `2026-10-28_self_service_learning.sql` is pending approval. The frontend changes are not committed or deployed.
+
+- **Learn:**
+  - "Start learning" offers five sources: upload a file (with progress, cancel, and waiting for text extraction), paste text, my materials, my course, or a YouTube video.
+  - Then pick what to make: lesson, summary, notes, key concepts, explanation, study plan, flashcards, quiz or mock exam. Level and exam goal default from the profile.
+  - The admin-dependent empty states are gone.
+- **Pages:**
+  - `/learn/materials/[id]`: status, retry, learn from it;
+  - `/learn/resources/[id]`: a generated lesson or notes, rendered as text, never as HTML;
+  - `/practice/[id]`: start or resume, autosave, practice checks, timer and auto-submit, history;
+  - `/practice/attempts/[id]`: score, strengths, topics to revise, every question with its explanation, and links back to the source.
+- **AI page → YouTube tab** (`/ai?tab=youtube`), plus the workspace at `/ai/youtube/[id]`:
+  - privacy-enhanced embed, in a split layout from 1024 px up;
+  - transcript with seek buttons, or paste a transcript, or retry the captions;
+  - grounded Q&A in which only server-verified timestamps become seek links;
+  - generate study material from the video.
+- **Library** gains "Lessons & study material", "Quizzes & exams" (with attempt history) and "YouTube sessions", each with search and filters. `?tab=` opens a section.
+- **My courses:** an outline (objectives), Archive, "Learn with AI from this course", a course plan that becomes modules, and "Make a lesson" per module.
+- **Global search** (Navbar button, Ctrl/Cmd+K or `/`):
+  - debounced, and earlier requests are cancelled;
+  - grouped results with arrow-key and Enter navigation, ARIA combobox and listbox roles;
+  - full screen on mobile; empty, error and unavailable states;
+  - only app-internal links are followed.
+- **Legacy routes** `/library/upload`, `/library/processing` and `/library/generated-class/[id]` redirect to the real flows.
+- **`useUrlParam`** reads `?tab=` without a Suspense boundary (`useSyncExternalStore`).
+- **Tests:**
+
+  | Check | Result |
+  |---|---|
+  | Frontend unit tests | 182/182 (new `self-learning.test.mjs`: 11) |
+  | `tsc` | Clean |
+  | ESLint | 404 errors / 18 warnings, all in files and lines unchanged from `HEAD` (`api.ts` 391 `no-explicit-any`, `ai.mjs`, the Navbar theme effect). All new and changed files are clean. |
+  | Browser: `self-learning` (new; real backend and AI service, **mock model**) | 11/11 |
+  | Browser: `responsive` (new; 29 pages × 320/375/390/768/1024/1366/1440 px, no horizontal scroll, no redirect, menu reachable) | 203/203 |
+  | Browser: `learner-core`, `library`, `learner-rest`, `ai`, `practice`, `admin`, `learner-profile` | 11/11, 11/11, 11/11, 11/11, 7/7, 9/9, 14/14 |
+  | Browser: `registration` | 22/23. The failing step logs in again after a password reset and gets a 429 from the per-IP login limit (5 per minute), after the suite's own reconciliation logins. Auth was not changed in this batch. |

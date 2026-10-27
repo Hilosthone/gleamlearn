@@ -21,7 +21,7 @@
  * Kept free of path aliases so it can be unit-tested with `node --test`.
  */
 
-import { coinsApi, coursesApi, lessonsApi, notificationsApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
+import { coinsApi, coursesApi, lessonsApi, notificationsApi, recommendationsApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
 
 export interface Topic {
   id: string;
@@ -261,3 +261,43 @@ export function lessonParagraphs(content: string | null | undefined): string[] {
     .map((p) => p.trim())
     .filter(Boolean);
 }
+
+// Recommendations ------------------------------------------------------------------------------------------------
+
+export interface CourseRecommendation {
+  courseId: string;
+  title: string;
+  description: string;
+  track: string;
+  level: string;
+  reasons: string[];
+}
+
+export interface CourseRecommendations {
+  items: CourseRecommendation[];
+  /** Profile details that would improve recommendations (e.g. "class", "exam goals"). */
+  missingProfile: string[];
+  /** The learner's exam goals that no catalogue course covers yet. */
+  uncoveredExamGoals: string[];
+  catalogueSize: number;
+}
+
+/**
+ * GET /recommendations/courses → catalogue courses ranked by the learner's profile (education type, class/level,
+ * exam goals, course of study), excluding courses they take. Every reason names the profile value it matched.
+ */
+export function toRecommendations(res: unknown): CourseRecommendations {
+  const r = (res ?? {}) as Record<string, unknown>;
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const items = (Array.isArray(r.recommendations) ? r.recommendations : [])
+    .map((x) => (x && typeof x === 'object' ? (x as Record<string, unknown>) : null))
+    .filter((x): x is Record<string, unknown> => !!x && !!x.course && typeof (x.course as Record<string, unknown>).id === 'string')
+    .map((x) => {
+      const c = x.course as Record<string, unknown>;
+      const s = (v: unknown) => (typeof v === 'string' ? v : '');
+      return { courseId: c.id as string, title: s(c.title) || 'Untitled course', description: s(c.description), track: s(c.track), level: s(c.level), reasons: list(x.reasons) };
+    });
+  return { items, missingProfile: list(r.missingProfile), uncoveredExamGoals: list(r.uncoveredExamGoals), catalogueSize: typeof r.catalogueSize === 'number' ? r.catalogueSize : 0 };
+}
+
+export const loadCourseRecommendations = async () => toRecommendations(await recommendationsApi.getCourseRecommendations());

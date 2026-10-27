@@ -19,8 +19,7 @@ import {
   Lock,
   Sparkles,
   CheckCircle2,
-  Mail,
-} from 'lucide-react';
+  Mail, Image as ImageIcon } from 'lucide-react';
 import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
 import { Input } from '@/components/ui/Input';
@@ -28,6 +27,8 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { ErrorState, FeatureUnavailable, LoadingState } from '@/components/ui/states';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { MyAvatar } from '@/components/profile/Avatar';
+import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { invalidateLearnerStats, sharedLearnerStats } from '@/lib/learning';
 import { STUDY_TIMES } from '@/lib/registration/wizard';
@@ -58,16 +59,11 @@ import {
 } from '@/lib/profile';
 
 type SubView = 'profile' | 'edit' | 'settings';
-type SettingsTab = 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy' | 'account';
+type SettingsTab = 'picture' | 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy' | 'account';
 
 const fieldClass =
   'w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const card = 'bg-white dark:bg-[#111827] p-6 sm:p-10 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? '?').slice(0, 2)).toUpperCase();
-}
 
 /**
  * The learner's real profile and preferences. Previously every value on this page (name, photo, email, XP,
@@ -166,12 +162,7 @@ function ProfileView({ profile, onEdit }: { profile: LearnerProfile; onEdit: () 
     <div className={`${card} relative overflow-hidden`}>
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <div
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg"
-            aria-hidden="true"
-          >
-            {initialsOf(profile.fullName || profile.username)}
-          </div>
+          <MyAvatar size={104} label="Your profile picture" className="shadow-lg" />
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{profile.fullName}</h2>
@@ -319,6 +310,7 @@ function EditProfile({ profile, onSaved, onDone }: { profile: LearnerProfile; on
 // ---------------------------------------------------------------------------------------------------------
 
 const SETTINGS_TABS: { id: SettingsTab; label: string; icon: typeof Sun }[] = [
+  { id: 'picture', label: 'Profile picture', icon: ImageIcon },
   { id: 'appearance', label: 'Appearance', icon: Sun },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'learning', label: 'Learning', icon: BookOpen },
@@ -351,6 +343,7 @@ function SettingsHub({ profile, onSaved }: { profile: LearnerProfile | undefined
         })}
       </nav>
       <div className="bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs lg:col-span-3 space-y-6">
+        {tab === 'picture' && <AvatarPicker />}
         {tab === 'appearance' && <AppearanceSettings />}
         {tab === 'notifications' && <NotificationSettingsPanel />}
         {tab === 'learning' && <LearningSettings profile={profile} onSaved={onSaved} />}

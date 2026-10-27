@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { StartLearning } from '@/components/learning/StartLearning';
+import { loadLearnerAssessments } from '@/lib/self-learning';
 import { CheckCircle2, ClipboardList, FileText, GraduationCap, Sparkles, XCircle, ArrowLeft, Clock } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
@@ -31,8 +34,9 @@ const KIND_LABEL: Record<AssessmentKind, { one: string; many: string; icon: type
 };
 
 /**
- * Quizzes, tests and exams from the backend (graded server-side), plus AI practice graded in the browser.
- * Replaces the static prototype screens, which showed invented questions, scores and readiness.
+ * Practice and Exams: the learner's own AI-generated quizzes and mock exams (saved, with attempts and reviews),
+ * created from their own material, plus any quizzes, tests and exams GleamLearn has published, and quick AI
+ * practice (not saved). Nothing here depends on GleamLearn having published content.
  */
 export function PracticeHub({ initialTab = 'quiz', title = 'Practice' }: { initialTab?: Tab; title?: string }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -47,13 +51,13 @@ export function PracticeHub({ initialTab = 'quiz', title = 'Practice' }: { initi
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">{title}</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Quizzes, tests and exams, graded by GleamLearn, plus AI practice.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Create quizzes and mock exams from your own material, take them, and review your results.</p>
           </div>
         </div>
         {!taking && (
           <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto" role="tablist">
             {(['quiz', 'test', 'exam', 'ai'] as Tab[]).map((t) => {
-              const label = t === 'ai' ? 'AI practice' : KIND_LABEL[t].many;
+              const label = t === 'ai' ? 'Quick AI practice' : t === 'exam' ? 'Mock exams' : KIND_LABEL[t].many;
               const Icon = t === 'ai' ? Sparkles : KIND_LABEL[t].icon;
               return (
                 <button
@@ -80,26 +84,84 @@ export function PracticeHub({ initialTab = 'quiz', title = 'Practice' }: { initi
       ) : tab === 'ai' ? (
         <AiPractice />
       ) : (
-        <AssessmentList kind={tab} onStart={(id) => setTaking({ kind: tab, id })} />
+        <KindPanel kind={tab} onStart={(id) => setTaking({ kind: tab, id })} />
       )}
     </div>
   );
 }
 
-function AssessmentList({ kind, onStart }: { kind: AssessmentKind; onStart: (id: string) => void }) {
-  const items = useApiQuery(() => listAssessments(kind), [kind]);
-  const { many, one, icon: Icon } = KIND_LABEL[kind];
-  if (items.isLoading) return <LoadingState layout="cards" rows={3} label={`Loading ${many.toLowerCase()}…`} />;
-  if (items.error && !items.data) return <ErrorState error={items.error} onRetry={items.retry} />;
+function KindPanel({ kind, onStart }: { kind: AssessmentKind; onStart: (id: string) => void }) {
+  if (kind === 'test') return <AssessmentList kind="test" onStart={onStart} />;
+  return (
+    <div className="space-y-8">
+      <MyAssessments kind={kind} />
+      <StartLearning
+        heading={kind === 'exam' ? 'Create a mock exam' : 'Create a quiz'}
+        kinds={kind === 'exam' ? ['exam'] : ['quiz']}
+        defaultKind={kind === 'exam' ? 'exam' : 'quiz'}
+      />
+      <AssessmentList kind={kind} onStart={onStart} />
+    </div>
+  );
+}
+
+/** The learner's own quizzes / mock exams, with their best score and any attempt in progress. */
+function MyAssessments({ kind }: { kind: 'quiz' | 'exam' }) {
+  const items = useApiQuery(() => loadLearnerAssessments(kind), [kind]);
+  const label = kind === 'exam' ? 'mock exams' : 'quizzes';
+  if (items.isLoading) return <LoadingState layout="cards" rows={2} label={`Loading your ${label}…`} />;
+  if (items.error && !items.data) return items.error.kind === 'not_implemented' ? null : <ErrorState error={items.error} onRetry={items.retry} />;
   if (!items.data?.length)
     return (
       <EmptyState
-        icon={Icon}
-        title={`No ${many.toLowerCase()} yet`}
-        description={`When ${many.toLowerCase()} are added by GleamLearn they will appear here. You can try AI practice in the meantime.`}
+        icon={kind === 'exam' ? GraduationCap : ClipboardList}
+        title={`You have no ${label} yet`}
+        description={`Create one below from a PDF, your notes, one of your courses or a YouTube video. It is saved here with your attempts and results.`}
       />
     );
   return (
+    <section aria-label={`Your ${label}`} className="space-y-3">
+      <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Your {label}</h2>
+      <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {items.data.map((a) => (
+          <li key={a.id} className={`${panel} flex flex-col gap-2`}>
+            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white break-words">{a.title}</h3>
+            <p className="text-[11px] text-gray-500">
+              {a.questionCount} questions{a.durationMinutes ? ` · ${a.durationMinutes} min` : ''}{a.examType ? ` · ${a.examType}` : ''}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              {a.inProgressAttemptId ? 'In progress' : a.attemptCount ? `Best score ${a.bestScore}% · ${a.attemptCount} attempt${a.attemptCount === 1 ? '' : 's'}` : 'Not taken yet'}
+            </p>
+            <div className="mt-auto pt-2">
+              <Link href={`/practice/${encodeURIComponent(a.id)}`} className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 min-h-10">
+                {a.inProgressAttemptId ? 'Resume' : a.attemptCount ? 'Review or retake' : 'Start'}
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Quizzes, tests and exams published by GleamLearn (shown only when there are some, except on Tests). */
+function AssessmentList({ kind, onStart }: { kind: AssessmentKind; onStart: (id: string) => void }) {
+  const items = useApiQuery(() => listAssessments(kind), [kind]);
+  const { many, one, icon: Icon } = KIND_LABEL[kind];
+  if (items.isLoading) return kind === 'test' ? <LoadingState layout="cards" rows={3} label={`Loading ${many.toLowerCase()}…`} /> : null;
+  if (items.error && !items.data) return <ErrorState error={items.error} onRetry={items.retry} />;
+  if (!items.data?.length)
+    return kind === 'test' ? (
+      <EmptyState
+        icon={Icon}
+        title="No GleamLearn tests right now"
+        description="You don't need them to practise: create your own quiz or mock exam from your material."
+        action={<span className="flex gap-3 text-xs font-semibold"><Link className="text-[var(--color-brand-blue)] underline" href="/practice">Create a quiz</Link><Link className="text-[var(--color-brand-blue)] underline" href="/exams">Create a mock exam</Link></span>}
+      />
+    ) : null;
+  return (
+    <section aria-label={`GleamLearn ${many.toLowerCase()}`} className="space-y-3">
+    {kind !== 'test' && <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">From GleamLearn</h2>}
     <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {items.data.map((a) => (
         <li key={a.id} className={`${panel} flex flex-col gap-3`}>
@@ -124,6 +186,7 @@ function AssessmentList({ kind, onStart }: { kind: AssessmentKind; onStart: (id:
         </li>
       ))}
     </ul>
+    </section>
   );
 }
 

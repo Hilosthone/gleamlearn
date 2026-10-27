@@ -2,16 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Search, GraduationCap, ArrowRight, BookMarked } from 'lucide-react';
+import { BookOpen, Search, ArrowRight, BookMarked } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { QueryState, LoadingState, EmptyState } from '@/components/ui/states';
 import { listCourses, listEnrolledCourses, TRACKS, type Course, type EnrolledCourse, type TrackFilter } from '@/lib/learning';
+import { StartLearning } from '@/components/learning/StartLearning';
+import { loadPersonalCourses } from '@/lib/learner-content';
+import { PrivateBadge } from '@/components/library/PersonalCourses';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const GRADIENTS = ['from-blue-600 to-indigo-700', 'from-purple-600 to-indigo-800', 'from-emerald-600 to-teal-700', 'from-amber-600 to-orange-700'];
 const gradientFor = (id: string) => GRADIENTS[[...id].reduce((n, ch) => n + ch.charCodeAt(0), 0) % GRADIENTS.length];
 
-/** Learning hub: the learner's enrolled courses and the course catalog (GET /users/me/courses, GET /courses[/search]). */
+/**
+ * Learning hub. Learners start from their own material (upload, paste, their courses, YouTube) and their own
+ * courses; GleamLearn's published courses (GET /users/me/courses, GET /courses[/search]) are listed alongside.
+ */
 export default function LearnPage() {
   const [track, setTrack] = useState<TrackFilter>('All');
   const [searchInput, setSearchInput] = useState('');
@@ -23,6 +29,7 @@ export default function LearnPage() {
   }, [searchInput]);
 
   const enrolled = useApiQuery(() => listEnrolledCourses(), []);
+  const mine = useApiQuery(() => loadPersonalCourses(), []);
   const catalog = useApiQuery(() => listCourses({ q: search, track }), [search, track]);
   const enrolledIds = new Set((enrolled.data ?? []).map((c) => c.id));
 
@@ -31,7 +38,7 @@ export default function LearnPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Learning Hub 📚</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your courses and the full course catalog.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Learn from your own material and courses, or from GleamLearn&apos;s courses.</p>
         </div>
         <label className="relative w-full md:w-72">
           <span className="sr-only">Search courses</span>
@@ -46,16 +53,50 @@ export default function LearnPage() {
         </label>
       </div>
 
-      {/* My courses */}
+      <StartLearning />
+
+      {/* The learner's own courses */}
+      <section className={`${card} p-6 sm:p-8 space-y-4`} aria-labelledby="own-courses">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="own-courses" className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-[var(--color-brand-blue)]" aria-hidden="true" /> Courses you created
+          </h2>
+          <Link href="/my-courses" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">Create or manage</Link>
+        </div>
+        {mine.isLoading ? (
+          <LoadingState layout="list" rows={2} label="Loading your courses…" />
+        ) : (mine.data ?? []).length === 0 ? (
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Create a course for any subject or exam, add its topics and materials, and let the AI build lessons and practice from it.{' '}
+            <Link href="/my-courses" className="font-semibold text-[var(--color-brand-blue)] underline">Create a course</Link>
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(mine.data ?? []).slice(0, 6).map((c) => (
+              <li key={c.id}>
+                <Link href={`/my-courses/${encodeURIComponent(c.id)}`} className="block p-4 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-[var(--color-brand-blue)] space-y-1">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{c.title}</span>
+                    <PrivateBadge />
+                  </span>
+                  <span className="block text-xs text-gray-500">{c.moduleCount} modules · {c.percent}% done</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Enrolled GleamLearn courses */}
       <section className={`${card} p-6 sm:p-8 space-y-4`} aria-labelledby="my-courses">
         <h2 id="my-courses" className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <BookMarked className="w-4 h-4 text-[var(--color-brand-blue)]" aria-hidden="true" /> My courses
+          <BookMarked className="w-4 h-4 text-[var(--color-brand-blue)]" aria-hidden="true" /> GleamLearn courses you joined
         </h2>
         <QueryState
           query={enrolled}
           loading={<LoadingState layout="list" rows={2} label="Loading your courses…" />}
           isEmpty={(list) => list.length === 0}
-          empty={<EmptyState icon={GraduationCap} title="You haven't enrolled in a course yet" description="Pick a course from the catalog below to start learning." />}
+          empty={<p className="text-sm text-gray-600 dark:text-gray-300">You haven&apos;t joined a GleamLearn course. Start from your own material above, or join one from the catalogue below.</p>}
         >
           {(list: EnrolledCourse[]) => (
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,7 +163,7 @@ export default function LearnPage() {
             <EmptyState
               icon={BookOpen}
               title={search || track !== 'All' ? 'No courses match' : 'No courses are available yet'}
-              description={search || track !== 'All' ? 'Try another search or track.' : 'Courses appear here once they are published by GleamLearn.'}
+              description={search || track !== 'All' ? 'Try another search or track.' : 'There is no GleamLearn course for this yet. Start from your own material above, or create your own course.'}
             />
           }
         >
