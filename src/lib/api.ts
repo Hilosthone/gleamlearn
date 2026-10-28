@@ -2835,10 +2835,11 @@ export interface AiTutorTeachPayload {
   [key: string]: any;
 }
 
+/** POST /ai-tutor/explain — backend TutorActionDto: { input (required), context? } */
 export interface AiTutorExplainPayload {
-  concept: string;
-  depth?: string;
-  [key: string]: any;
+  input: string;
+  /** an object: the AI service declares TutorPayload.context as Dict[str, Any] */
+  context?: Record<string, string>;
 }
 
 export interface AiTutorDiagramPayload {
@@ -3519,8 +3520,9 @@ export const resolveApiUrl = (url: string) => (url.startsWith('/') ? `${API_BASE
 // SELF-SERVICE LEARNING (learner-owned; every route acts on the signed-in learner)
 // ==========================================
 
-export type LearningKind = 'lesson' | 'summary' | 'notes' | 'study_plan' | 'key_concepts' | 'explanation' | 'quiz' | 'exam' | 'flashcards' | 'course_plan';
-export type LearningSourceType = 'material' | 'text' | 'course' | 'module' | 'resource' | 'youtube' | 'note';
+export type LearningKind = 'lesson' | 'summary' | 'notes' | 'study_plan' | 'key_concepts' | 'explanation' | 'quiz' | 'exam' | 'flashcards' | 'course_plan' | 'visual_lesson';
+/** 'topic': a topic named by the learner (visual lessons only; taught from general knowledge) */
+export type LearningSourceType = 'material' | 'text' | 'course' | 'module' | 'resource' | 'youtube' | 'note' | 'topic';
 
 export interface GenerateLearningPayload {
   /** Client-generated UUID: a retried request returns the first result instead of generating again. */

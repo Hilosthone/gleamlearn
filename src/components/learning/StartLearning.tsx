@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
-import { FileText, FolderOpen, Loader2, PlaySquare, Type, Upload } from 'lucide-react';
+import { Box, FileText, FolderOpen, Loader2, PlaySquare, Type, Upload } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { ErrorState } from '@/components/ui/states';
@@ -15,13 +15,14 @@ import { addTextMaterial, waitForMaterial, type LearningKind, type MaterialState
 const input =
   'w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue)]';
 
-type Mode = 'upload' | 'paste' | 'material' | 'course' | 'youtube';
+type Mode = 'upload' | 'paste' | 'material' | 'course' | 'youtube' | 'topic';
 const MODES: { id: Mode; label: string; icon: typeof Upload }[] = [
   { id: 'upload', label: 'Upload a file', icon: Upload },
   { id: 'paste', label: 'Paste text', icon: Type },
   { id: 'material', label: 'My materials', icon: FileText },
   { id: 'course', label: 'My course', icon: FolderOpen },
   { id: 'youtube', label: 'YouTube video', icon: PlaySquare },
+  { id: 'topic', label: 'A topic (visual lesson)', icon: Box },
 ];
 
 interface Props {
@@ -97,6 +98,7 @@ export function StartLearning({ kinds, defaultKind, initialMode = 'upload', head
             }}
           />
         )}
+        {mode === 'topic' && <TopicStep onReady={(topic) => setSource(topic ? { sourceType: 'topic', text: topic, label: topic } : null)} />}
         {mode === 'youtube' && (
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Learn from a video in the AI workspace: watch it, ask questions about it and generate study material from its transcript.{' '}
@@ -107,7 +109,15 @@ export function StartLearning({ kinds, defaultKind, initialMode = 'upload', head
 
       {source && (
         <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-          <GenerateForm key={`${source.sourceType}:${source.sourceId}`} heading={`From “${source.label}”`} source={source} personalCourseId={courseId || undefined} kinds={kinds} defaultKind={defaultKind} />
+          <GenerateForm
+            key={`${source.sourceType}:${source.sourceId ?? source.text}`}
+            heading={`From “${source.label}”`}
+            source={source}
+            personalCourseId={courseId || undefined}
+            // a topic on its own can only make a visual lesson (the backend refuses other kinds)
+            kinds={source.sourceType === 'topic' ? ['visual_lesson'] : kinds}
+            defaultKind={source.sourceType === 'topic' ? 'visual_lesson' : defaultKind}
+          />
         </div>
       )}
     </section>
@@ -259,5 +269,28 @@ function CourseStep({ courses, loading, onPick }: { courses: { id: string; title
         ))}
       </select>
     </label>
+  );
+}
+
+/** A topic to be taught as an interactive visual lesson, from general knowledge (labelled as such on the lesson). */
+function TopicStep({ onReady }: { onReady: (topic: string | null) => void }) {
+  const [topic, setTopic] = useState('');
+  const ok = topic.trim().length >= 3;
+  return (
+    <form
+      className="space-y-2 max-w-xl"
+      aria-label="Learn a topic"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onReady(ok ? topic.trim() : null);
+      }}
+    >
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">What do you want to understand?</span>
+        <input className={input} value={topic} maxLength={300} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. The structure of a water molecule, projectile motion, the Krebs cycle" />
+      </label>
+      <p className="text-[11px] text-gray-500">The AI explains it step by step with 3D models, diagrams and graphs, from general knowledge. For lessons from your own notes, upload or paste them instead.</p>
+      <Button type="submit" size="sm" disabled={!ok}>Use this topic</Button>
+    </form>
   );
 }

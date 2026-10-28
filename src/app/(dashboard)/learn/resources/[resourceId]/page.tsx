@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Trash2 } from 'lucide-react';
@@ -13,10 +13,12 @@ import { Blocks } from '@/components/learning/Blocks';
 import { GenerateForm } from '@/components/learning/GenerateForm';
 import { invalidateLearnerStats } from '@/lib/learning';
 import { completeResource, deleteResource, kindInfo, loadResource } from '@/lib/self-learning';
+import { parseVisualLesson, type VisualLesson } from '@/lib/visual-lesson';
+import { VisualLessonView } from '@/components/visual/VisualLessonView';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
-/** A generated lesson, summary, notes, study plan, key concepts or explanation. */
+/** A generated lesson, summary, notes, study plan, key concepts, explanation — or an interactive visual lesson. */
 export default function ResourcePage() {
   const { resourceId } = useParams<{ resourceId: string }>();
   const router = useRouter();
@@ -32,9 +34,17 @@ export default function ResourcePage() {
     router.push('/library?tab=lessons');
   });
   const r = res.data;
+  const visual = useMemo((): { lesson: VisualLesson | null; error: string | null } => {
+    if (r?.kind !== 'visual_lesson') return { lesson: null, error: null };
+    try {
+      return { lesson: parseVisualLesson(r.content), error: null };
+    } catch (e) {
+      return { lesson: null, error: (e as Error).message };
+    }
+  }, [r]);
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300 max-w-3xl">
+    <div className={`space-y-6 pb-12 animate-in fade-in duration-300 ${r?.kind === 'visual_lesson' ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <Link href={r?.personalCourseId ? `/my-courses/${encodeURIComponent(r.personalCourseId)}` : '/library?tab=lessons'} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
         <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" /> {r?.personalCourseId ? 'Back to the course' : 'Library'}
       </Link>
@@ -45,10 +55,18 @@ export default function ResourcePage() {
       ) : r ? (
         <>
           <article className={`${card} p-5 sm:p-8 space-y-4`} aria-labelledby="resource-title">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-brand-blue)]">{kindInfo(r.kind)?.label ?? r.kind} · AI-generated from your material</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-brand-blue)]">{kindInfo(r.kind)?.label ?? r.kind} · {r.sourceType === 'topic' ? 'AI-generated from general knowledge' : 'AI-generated from your material'}</p>
             <h1 id="resource-title" className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white break-words">{r.title}</h1>
             {r.truncated && <Alert variant="warning">Your material was long, so only its first part was used for this.</Alert>}
-            <Blocks markdown={r.content} />
+            {r.kind === 'visual_lesson' ? (
+              visual.lesson ? (
+                <VisualLessonView lesson={visual.lesson} onFinished={r.completed ? undefined : () => void complete.run()} />
+              ) : (
+                <Alert variant="warning">{visual.error}</Alert>
+              )
+            ) : (
+              <Blocks markdown={r.content} />
+            )}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
               {r.completed ? (
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">

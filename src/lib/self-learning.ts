@@ -53,11 +53,12 @@ export interface KindInfo {
   id: LearningKind;
   label: string;
   description: string;
-  /** quiz / exam / flashcards / course_plan take a count */
+  /** quiz / exam / flashcards / course_plan / visual_lesson take a count */
   count?: { label: string; min: number; max: number; default: number };
 }
 
 export const KINDS: KindInfo[] = [
+  { id: 'visual_lesson', label: 'Interactive visual lesson', description: 'Step by step, with 3D models, diagrams and graphs you can explore.', count: { label: 'Steps', min: 2, max: 8, default: 5 } },
   { id: 'lesson', label: 'Structured lesson', description: 'A lesson with sections, examples and a recap.' },
   { id: 'summary', label: 'Summary', description: 'The key points, briefly.' },
   { id: 'notes', label: 'Revision notes', description: 'Headings, bullet points, definitions and formulas.' },
@@ -70,7 +71,7 @@ export const KINDS: KindInfo[] = [
   { id: 'course_plan', label: 'Course plan', description: 'Split it into modules, added to the course.', count: { label: 'Modules', min: 3, max: 20, default: 8 } },
 ];
 /** Kinds offered by default (a course plan only makes sense on a course). */
-export const DEFAULT_KINDS: LearningKind[] = ['lesson', 'summary', 'notes', 'key_concepts', 'explanation', 'flashcards', 'quiz', 'exam', 'study_plan'];
+export const DEFAULT_KINDS: LearningKind[] = ['visual_lesson', 'lesson', 'summary', 'notes', 'key_concepts', 'explanation', 'flashcards', 'quiz', 'exam', 'study_plan'];
 export const kindInfo = (id: string) => KINDS.find((k) => k.id === id) ?? null;
 export const EXAM_GOALS = ['WAEC', 'NECO', 'JAMB', 'Post-UTME', 'GCE', 'BECE', 'University course'];
 
