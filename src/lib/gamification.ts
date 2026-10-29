@@ -19,7 +19,7 @@
  * XP and coins are only ever awarded by the backend (quiz submission, admins). This module never awards anything.
  */
 
-import { achievementsApi, badgesApi, coinsApi, leaderboardsApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
+import { achievementsApi, badgesApi, coinsApi, leaderboardsApi, levelsApi, masteryApi, progressApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
 import { invalidateLearnerStats, type StreakSummary } from './learning.ts';
 
 type Raw = Record<string, unknown>;
@@ -183,7 +183,8 @@ export function toLeaderboard(res: unknown): LeaderboardEntry[] {
     .sort((a, b) => a.rank - b.rank);
 }
 
-export type LeaderboardScope = 'global' | 'weekly' | 'monthly' | 'country';
+/** school / university / department use the learner's own profile value (the backend fills it in). */
+export type LeaderboardScope = 'global' | 'weekly' | 'monthly' | 'country' | 'school' | 'university' | 'department' | 'course';
 
 // ---------------------------------------------------------------------------------------------------------
 // Study time and the activity timeline
@@ -258,8 +259,13 @@ export async function loadBadges(): Promise<BadgeItem[]> {
   const [catalog, mine] = await Promise.all([badgesApi.getAllBadges(), badgesApi.getMyBadges()]);
   return mergeBadges(catalog, mine);
 }
-export async function loadLeaderboard(scope: LeaderboardScope, country?: string): Promise<LeaderboardEntry[]> {
+export async function loadLeaderboard(scope: LeaderboardScope, country?: string, courseId?: string): Promise<LeaderboardEntry[]> {
   if (scope === 'country') return country ? toLeaderboard(await leaderboardsApi.getCountryLeaderboard(country)) : [];
+  // learners enrolled in that catalogue course, by XP
+  if (scope === 'course') return courseId ? toLeaderboard(await leaderboardsApi.getCourseLeaderboard(courseId)) : [];
+  if (scope === 'school') return toLeaderboard(await leaderboardsApi.getSchoolLeaderboard(''));
+  if (scope === 'university') return toLeaderboard(await leaderboardsApi.getUniversityLeaderboard(''));
+  if (scope === 'department') return toLeaderboard(await leaderboardsApi.getDepartmentLeaderboard(''));
   if (scope === 'weekly') return toLeaderboard(await leaderboardsApi.getWeeklyLeaderboard());
   if (scope === 'monthly') return toLeaderboard(await leaderboardsApi.getMonthlyLeaderboard());
   return toLeaderboard(await leaderboardsApi.getGlobalLeaderboard());
@@ -276,4 +282,54 @@ export async function checkInToday(): Promise<void> {
 export async function recoverStreak(): Promise<void> {
   await streaksApi.recoverStreak();
   invalidateLearnerStats();
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Level, rank and learning progress
+// ---------------------------------------------------------------------------------------------------------
+
+export interface LevelInfo {
+  level: number;
+  totalXp: number;
+  xpIntoLevel: number;
+  xpForNextLevel: number;
+  title: string | null;
+  tiers: { level: number; title: string; minXp: number }[];
+  rank: number | null;
+}
+
+export async function loadLevel(): Promise<LevelInfo> {
+  const [me, all, rank] = (await Promise.all([levelsApi.getMyLevel(), levelsApi.getAllLevels(), leaderboardsApi.getMyRank()])) as (Raw | null)[];
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  const progress = (me?.progress ?? {}) as Raw;
+  const tiers = (Array.isArray(all?.tiers) ? all.tiers : [])
+    .map((t) => (t ?? {}) as Raw)
+    .map((t) => ({ level: n(t.level), title: typeof t.title === 'string' ? t.title : '', minXp: n(t.minXp) }))
+    .filter((t) => t.title)
+    .sort((a, b) => a.level - b.level);
+  const level = n(me?.currentLevel) || 1;
+  const title = [...tiers].reverse().find((t) => t.level <= level)?.title ?? null;
+  return { level, totalXp: n(me?.totalXp), xpIntoLevel: n(progress.xpIntoCurrentLevel), xpForNextLevel: n(progress.xpNeededForNextLevel), title, tiers, rank: typeof rank?.rank === 'number' ? rank.rank : null };
+}
+
+export interface LearningProgress {
+  trackedCourses: number;
+  completionPercentage: number | null;
+  masteryScore: number | null;
+  masteryLevel: string | null;
+  courses: { courseId: string; completionPercentage: number; isCompleted: boolean }[];
+}
+
+/** GET /progress and /mastery: lesson completion and mastery records (catalogue courses). Empty when none. */
+export async function loadLearningProgress(): Promise<LearningProgress> {
+  const [p, m] = (await Promise.all([progressApi.getOverallProgress(), masteryApi.getOverallMasteryMetrics()])) as (Raw | null)[];
+  const rows = Array.isArray(p?.progressRecords) ? (p.progressRecords as Raw[]) : [];
+  const masteries = Array.isArray(m?.breakdown) ? (m.breakdown as unknown[]) : [];
+  return {
+    trackedCourses: rows.length,
+    completionPercentage: rows.length && typeof p?.overallCompletionPercentage === 'number' ? p.overallCompletionPercentage : null,
+    masteryScore: masteries.length && typeof m?.overallMasteryScore === 'number' ? m.overallMasteryScore : null,
+    masteryLevel: masteries.length && typeof m?.masteryLevel === 'string' ? m.masteryLevel : null,
+    courses: rows.map((r) => ({ courseId: String(r.courseId ?? ''), completionPercentage: typeof r.completionPercentage === 'number' ? r.completionPercentage : 0, isCompleted: r.isCompleted === true })).filter((c) => c.courseId),
+  };
 }

@@ -8,7 +8,7 @@
  *   DELETE /library/courses/:courseId     → { message }; 404 if not saved
  *   GET/POST /notes, GET/PATCH/DELETE /notes/:id   { title, content, courseId?, tags? }
  *   GET/POST /flashcard-decks, GET/PATCH/DELETE /flashcard-decks/:id (deck with `cards`)
- *   POST /flashcards { deckId, question, answer }; DELETE /flashcards/:id
+ *   POST /flashcards { deckId, question, answer }; PATCH /flashcards/:id { question?, answer? }; DELETE /flashcards/:id
  *   GET  /flashcards/review/today         → cards due (never reviewed or due), each with its deck
  *   POST /flashcards/:id/review { quality: 0..5 }  → SM-2 schedule updated server-side
  * Uploaded files are not listed here: files have no owner column yet (B4), so listing them is admin-only.
@@ -161,6 +161,8 @@ export const createDeck = (d: { title: string; description: string; category: st
 export const deleteDeck = (id: string) => flashcardDecksApi.deleteDeck(id);
 export const addCard = (deckId: string, question: string, answer: string) => flashcardsApi.createFlashcard({ deckId, question, answer });
 export const deleteCard = (id: string) => flashcardsApi.deleteFlashcard(id);
+export const updateCard = (id: string, question: string, answer: string) => flashcardsApi.updateFlashcard(id, { question: question.trim(), answer: answer.trim() });
+export const updateDeck = (id: string, d: { title: string; description: string }) => flashcardDecksApi.updateDeck(id, { title: d.title.trim(), description: d.description.trim() });
 export const loadDueCards = async () => toDueCards(await flashcardsApi.getDueFlashcards());
 export async function reviewCard(id: string, quality: number) {
   const res = await flashcardsApi.submitReview(id, { quality });

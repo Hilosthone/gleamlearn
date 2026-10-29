@@ -30,6 +30,8 @@ interface Props {
   kinds?: LearningKind[];
   defaultKind?: LearningKind;
   initialMode?: Mode;
+  /** pre-fills the "A topic" mode */
+  initialTopic?: string;
   heading?: string;
 }
 
@@ -37,7 +39,7 @@ interface Props {
  * Start learning from the learner's own material: upload (PDF, Word, text), paste, an earlier material, one of
  * their courses, or a YouTube video — then choose what to generate. Works without any GleamLearn-published content.
  */
-export function StartLearning({ kinds, defaultKind, initialMode = 'upload', heading = 'Start learning from your own material' }: Props) {
+export function StartLearning({ kinds, defaultKind, initialMode = 'upload', initialTopic, heading = 'Start learning from your own material' }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [courseId, setCourseId] = useState('');
   const [source, setSource] = useState<(GenerateSource & { label: string }) | null>(null);
@@ -98,7 +100,7 @@ export function StartLearning({ kinds, defaultKind, initialMode = 'upload', head
             }}
           />
         )}
-        {mode === 'topic' && <TopicStep onReady={(topic) => setSource(topic ? { sourceType: 'topic', text: topic, label: topic } : null)} />}
+        {mode === 'topic' && <TopicStep initial={initialTopic} onReady={(topic) => setSource(topic ? { sourceType: 'topic', text: topic, label: topic } : null)} />}
         {mode === 'youtube' && (
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Learn from a video in the AI workspace: watch it, ask questions about it and generate study material from its transcript.{' '}
@@ -273,8 +275,8 @@ function CourseStep({ courses, loading, onPick }: { courses: { id: string; title
 }
 
 /** A topic to be taught as an interactive visual lesson, from general knowledge (labelled as such on the lesson). */
-function TopicStep({ onReady }: { onReady: (topic: string | null) => void }) {
-  const [topic, setTopic] = useState('');
+function TopicStep({ initial = '', onReady }: { initial?: string; onReady: (topic: string | null) => void }) {
+  const [topic, setTopic] = useState(initial);
   const ok = topic.trim().length >= 3;
   return (
     <form

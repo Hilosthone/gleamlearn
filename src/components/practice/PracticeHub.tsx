@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { StartLearning } from '@/components/learning/StartLearning';
 import { loadLearnerAssessments } from '@/lib/self-learning';
-import { CheckCircle2, ClipboardList, FileText, GraduationCap, Sparkles, XCircle, ArrowLeft, Clock } from 'lucide-react';
+import { CheckCircle2, ClipboardList, FileText, GraduationCap, Sparkles, XCircle, ArrowLeft, Clock, History, Target, BookOpenCheck, CalendarClock, BarChart3 } from 'lucide-react';
+import { PastQuestions, PerformanceAnalytics, PrepPlans } from '@/components/practice/ExamPrepPanels';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { EmptyState, ErrorState, LoadingState, SlowNotice } from '@/components/ui/states';
@@ -17,6 +18,10 @@ import {
   gradeLocally,
   listAssessments,
   submitAssessment,
+  loadExamReadiness,
+  loadOfficialHistory,
+  officialAttemptHref,
+  startOfficialAttempt,
   type Assessment,
   type AssessmentKind,
   type GeneratedQuestion,
@@ -24,7 +29,15 @@ import {
   type SubmitResult,
 } from '@/lib/practice';
 
-type Tab = AssessmentKind | 'ai';
+type Tab = AssessmentKind | 'ai' | 'history' | 'past' | 'prep' | 'analytics';
+
+const EXTRA_TABS = {
+  ai: { label: 'Quick AI practice', icon: Sparkles },
+  history: { label: 'History', icon: History },
+  past: { label: 'Past questions', icon: BookOpenCheck },
+  prep: { label: 'Exam prep plans', icon: CalendarClock },
+  analytics: { label: 'Performance', icon: BarChart3 },
+} as const;
 
 const panel = 'bg-white dark:bg-[#111827] p-6 sm:p-8 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const KIND_LABEL: Record<AssessmentKind, { one: string; many: string; icon: typeof FileText }> = {
@@ -56,9 +69,10 @@ export function PracticeHub({ initialTab = 'quiz', title = 'Practice' }: { initi
         </div>
         {!taking && (
           <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto" role="tablist">
-            {(['quiz', 'test', 'exam', 'ai'] as Tab[]).map((t) => {
-              const label = t === 'ai' ? 'Quick AI practice' : t === 'exam' ? 'Mock exams' : KIND_LABEL[t].many;
-              const Icon = t === 'ai' ? Sparkles : KIND_LABEL[t].icon;
+            {(['quiz', 'test', 'exam', 'past', 'prep', 'ai', 'history', 'analytics'] as Tab[]).map((t) => {
+              const extra = EXTRA_TABS[t as keyof typeof EXTRA_TABS];
+              const label = extra ? extra.label : t === 'exam' ? 'Mock exams' : KIND_LABEL[t as AssessmentKind].many;
+              const Icon = extra ? extra.icon : KIND_LABEL[t as AssessmentKind].icon;
               return (
                 <button
                   key={t}
@@ -83,6 +97,14 @@ export function PracticeHub({ initialTab = 'quiz', title = 'Practice' }: { initi
         <TakeAssessment kind={taking.kind} id={taking.id} onExit={() => setTaking(null)} />
       ) : tab === 'ai' ? (
         <AiPractice />
+      ) : tab === 'history' ? (
+        <OfficialHistory />
+      ) : tab === 'past' ? (
+        <PastQuestions />
+      ) : tab === 'prep' ? (
+        <PrepPlans />
+      ) : tab === 'analytics' ? (
+        <PerformanceAnalytics />
       ) : (
         <KindPanel kind={tab} onStart={(id) => setTaking({ kind: tab, id })} />
       )}
@@ -251,34 +273,82 @@ function QuestionList({
   );
 }
 
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
+/**
+ * Taking an official quiz, test or exam: a stored attempt is started (or resumed) on the server; tests and exams
+ * are timed from their duration and submitted automatically when time is up. When the server cannot store attempts
+ * yet (501), the answers are still graded on submit, and the page says the result is not saved.
+ */
 function TakeAssessment({ kind, id, onExit }: { kind: AssessmentKind; id: string; onExit: () => void }) {
   const assessment = useApiQuery(() => getAssessment(kind, id), [kind, id]);
+  const attempt = useApiQuery(() => startOfficialAttempt(kind, id), [kind, id]);
+  const readiness = useApiQuery(() => (kind === 'exam' ? loadExamReadiness(id) : Promise.resolve(null)), [kind, id]);
   const [selected, setSelected] = useState<Record<number, string>>({});
-  const submit = useAsyncAction(async (_signal: AbortSignal, a: Assessment) => submitAssessment(a.kind, a.id, selected));
-  const result: SubmitResult | undefined = submit.result;
+  const [now, setNow] = useState(() => Date.now());
+  // auto: submitted because time ran out
+  const submit = useAsyncAction(async (_signal: AbortSignal, a: Assessment, auto?: boolean) => ({ ...(await submitAssessment(a.kind, a.id, selected)), auto: auto === true }));
+  const result: (SubmitResult & { auto: boolean }) | undefined = submit.result;
+  const autoSubmitted = useRef(false);
+  const deadline = attempt.data?.deadlineAt ? Date.parse(attempt.data.deadlineAt) : null;
+  const left = deadline ? Math.max(0, Math.floor((deadline - now) / 1000)) : null;
 
-  if (assessment.isLoading) return <LoadingState layout="detail" />;
+  useEffect(() => {
+    if (!deadline || result) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [deadline, result]);
+  useEffect(() => {
+    // time is up: submit what has been answered, once
+    if (left === 0 && assessment.data && !result && !submit.isPending && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void submit.run(assessment.data, true);
+    }
+  }, [left, assessment.data, result, submit]);
+
+  if (assessment.isLoading || attempt.isLoading) return <LoadingState layout="detail" />;
   if (assessment.error && !assessment.data) return <ErrorState error={assessment.error} onRetry={assessment.retry} />;
   const a = assessment.data!;
+  const notStored = attempt.error?.kind === 'not_implemented';
   const answered = a.questions.filter((q) => (selected[q.index] ?? '').trim() !== '').length;
 
   return (
     <div className={`${panel} space-y-6`}>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">{a.title}</h2>
-          <p className="text-xs text-gray-500">{a.questions.length} questions{a.durationMinutes ? ` · suggested time ${a.durationMinutes} min` : ''}</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white break-words">{a.title}</h2>
+          <p className="text-xs text-gray-500">
+            {a.questions.length} questions{a.durationMinutes ? ` · ${a.durationMinutes} min` : ''}
+            {attempt.data?.resumed ? ' · resumed your attempt in progress' : ''}
+          </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onExit} disabled={submit.isPending}>
-          <ArrowLeft className="w-4 h-4 mr-1" aria-hidden="true" /> Back
-        </Button>
+        <div className="flex items-center gap-2">
+          {left !== null && !result && (
+            <span role="timer" aria-label="Time left" className={`inline-flex items-center gap-1.5 text-sm font-black tabular-nums ${left < 60 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+              <Clock className="w-4 h-4" aria-hidden="true" /> {clock(left)}
+            </span>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={onExit} disabled={submit.isPending}>
+            <ArrowLeft className="w-4 h-4 mr-1" aria-hidden="true" /> Back
+          </Button>
+        </div>
       </div>
+
+      {kind === 'exam' && readiness.data && !result && (
+        <div className="rounded-2xl bg-gray-50 dark:bg-gray-900 p-4 text-xs text-gray-700 dark:text-gray-300 flex flex-wrap gap-x-4 gap-y-1" aria-label="Exam readiness">
+          <span className="font-bold text-gray-900 dark:text-white inline-flex items-center gap-1"><Target className="w-3.5 h-3.5" aria-hidden="true" /> Readiness: {readiness.data.status === 'ready' ? 'ready' : readiness.data.status === 'building' ? 'building up' : 'no attempts yet'}</span>
+          {readiness.data.attempts > 0 && <span>{readiness.data.attempts} attempt(s) · best {readiness.data.bestScore}% · recent average {readiness.data.recentAverage}%</span>}
+          {readiness.data.weakTopics.length > 0 && <span>To revise: {readiness.data.weakTopics.slice(0, 4).map((t) => `${t.topic} (${t.percent}%)`).join(', ')}</span>}
+        </div>
+      )}
+      {attempt.error && !notStored && !result && <ErrorState error={attempt.error} onRetry={attempt.retry} compact />}
 
       {result ? (
         <div className="space-y-4" role="status">
           <p className="text-3xl font-black text-gray-900 dark:text-white">{result.graded ? `${result.score}%` : 'Not graded'}</p>
           <p className="text-xs text-gray-600 dark:text-gray-300">
             {result.correctAnswers !== null && result.graded ? `${result.correctAnswers} of ${result.totalQuestions} correct. ` : ''}
+            {result.auto ? 'Time was up, so your answers were submitted automatically. ' : ''}
             {result.message}
           </p>
           {(result.xpAwarded > 0 || result.coinsAwarded > 0) && (
@@ -286,7 +356,13 @@ function TakeAssessment({ kind, id, onExit }: { kind: AssessmentKind; id: string
               +{result.xpAwarded} XP and +{result.coinsAwarded} coins were added to your account.
             </Alert>
           )}
-          {kind !== 'quiz' && <p className="text-[11px] text-gray-400">Results are not saved yet, so this score will not appear in your history.</p>}
+          {result.attemptId ? (
+            <Link href={officialAttemptHref({ kind, id: result.attemptId })} className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 min-h-10">
+              Review your answers
+            </Link>
+          ) : (
+            <p className="text-[11px] text-gray-400">This result could not be saved on this server, so it will not appear in your history.</p>
+          )}
           <Button type="button" variant="primary" size="md" onClick={onExit}>
             Back to {KIND_LABEL[kind].many.toLowerCase()}
           </Button>
@@ -299,7 +375,7 @@ function TakeAssessment({ kind, id, onExit }: { kind: AssessmentKind; id: string
           }}
           className="space-y-6"
         >
-          <QuestionList questions={a.questions} selected={selected} onSelect={(i, v) => setSelected((s) => ({ ...s, [i]: v }))} />
+          <QuestionList questions={a.questions} selected={selected} onSelect={(i, v) => setSelected((cur) => ({ ...cur, [i]: v }))} />
           {submit.error && <ErrorState error={submit.error} compact />}
           {submit.isSlow && <SlowNotice />}
           <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -311,6 +387,45 @@ function TakeAssessment({ kind, id, onExit }: { kind: AssessmentKind; id: string
             </Button>
           </div>
         </form>
+      )}
+    </div>
+  );
+}
+
+/** The learner's stored attempts at official quizzes, tests and exams. */
+function OfficialHistory() {
+  const history = useApiQuery(() => loadOfficialHistory(), []);
+  if (history.isLoading) return <LoadingState rows={3} label="Loading your attempts…" />;
+  if (history.error && !history.data) return <ErrorState error={history.error} onRetry={history.retry} />;
+  const { attempts, unavailable } = history.data!;
+  return (
+    <div className={`${panel} space-y-4`}>
+      <div>
+        <h2 className="text-base font-extrabold text-gray-900 dark:text-white">Your attempts at GleamLearn quizzes, tests and exams</h2>
+        <p className="text-xs text-gray-500">Attempts at quizzes and exams you made yourself are in Library → Quizzes & exams.</p>
+      </div>
+      {unavailable.length === 3 ? (
+        <EmptyState icon={History} title="Attempt history isn't available yet" description="This server can't store attempts yet. Your answers are still graded when you submit." />
+      ) : !attempts.length ? (
+        <EmptyState icon={History} title="No attempts yet" description="Take a quiz, test or exam and it will be listed here with its score and review." />
+      ) : (
+        <ul className="divide-y divide-gray-100 dark:divide-gray-800" aria-label="Attempt history">
+          {attempts.map((t) => (
+            <li key={t.id} className="py-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mr-2">{KIND_LABEL[t.kind].one}</span>
+                {t.status === 'submitted' ? (
+                  <Link href={officialAttemptHref(t)} className="font-semibold text-gray-900 dark:text-white hover:text-emerald-600 break-words">{t.title}</Link>
+                ) : (
+                  <span className="font-semibold text-gray-900 dark:text-white break-words">{t.title}</span>
+                )}
+              </span>
+              <span className="text-xs text-gray-500">
+                {t.status === 'submitted' ? `${t.graded ? `${t.score}%` : 'not graded'} · ${t.submittedAt ? new Date(t.submittedAt).toLocaleString() : ''}` : 'in progress'}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

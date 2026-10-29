@@ -36,6 +36,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
     { name: 'Learn', href: '/learn', icon: BookOpen },
+    { name: 'My Courses', href: '/my-courses', icon: GraduationCap },
     { name: 'Library', href: '/library', icon: FolderKanban },
     { name: 'Practice', href: '/practice', icon: Target },
     { name: 'Exams', href: '/exams', icon: GraduationCap },
@@ -78,7 +79,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
               />
             </div>
             <span className="text-lg font-extrabold text-gray-900 dark:text-white">
-              gleam<span className="text-[var(--color-brand-blue)]">Learn</span>
+              Gleam<span className="text-[var(--color-brand-blue)]">Learn</span>
             </span>
           </div>
           <button 

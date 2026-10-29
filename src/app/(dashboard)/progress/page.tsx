@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Trophy, Flame, Coins, Award, TrendingUp, Zap, BookOpen, CheckCircle2, Lock, Clock, CalendarDays, Shield } from 'lucide-react';
+import { Trophy, Flame, Coins, Award, TrendingUp, Zap, BookOpen, CheckCircle2, Lock, Clock, CalendarDays, Shield, BarChart3, Medal } from 'lucide-react';
+import { LearningProgressView, LevelView } from '@/components/progress/ProgressExtras';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
@@ -28,7 +29,7 @@ import {
   type LedgerEntry,
 } from '@/lib/gamification';
 
-type View = 'dashboard' | 'xp' | 'coins' | 'achievements' | 'streak' | 'leaderboard';
+type View = 'dashboard' | 'learning' | 'level' | 'xp' | 'coins' | 'achievements' | 'streak' | 'leaderboard';
 
 const panel = 'bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -53,7 +54,9 @@ export default function ProgressGamificationHub() {
         <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0" role="tablist">
           {[
             { id: 'dashboard', label: 'Overview', icon: TrendingUp },
-            { id: 'xp', label: 'XP & Level', icon: Zap },
+            { id: 'learning', label: 'Learning progress', icon: BarChart3 },
+            { id: 'level', label: 'Level & rank', icon: Medal },
+            { id: 'xp', label: 'XP history', icon: Zap },
             { id: 'coins', label: 'Coins', icon: Coins },
             { id: 'achievements', label: 'Achievements', icon: Award },
             { id: 'streak', label: 'Streak', icon: Flame },
@@ -80,6 +83,8 @@ export default function ProgressGamificationHub() {
       </div>
 
       {view === 'dashboard' && <Overview />}
+      {view === 'learning' && <LearningProgressView />}
+      {view === 'level' && <LevelView />}
       {view === 'xp' && <XpView />}
       {view === 'coins' && <CoinsView />}
       {view === 'achievements' && <AchievementsView />}
@@ -379,13 +384,20 @@ function LeaderboardView() {
   const session = useOptionalLearnerSession();
   const country = (session?.user.country as string | undefined) || '';
   const [scope, setScope] = useState<LeaderboardScope>('weekly');
-  const board = useApiQuery(() => loadLeaderboard(scope, country), [scope, country]);
+  const enrolled = useApiQuery(() => listEnrolledCourses(), []);
+  const [chosenCourse, setChosenCourse] = useState('');
+  const courseId = chosenCourse || enrolled.data?.[0]?.id || '';
+  const board = useApiQuery(() => loadLeaderboard(scope, country, courseId), [scope, country, scope === 'course' ? courseId : '']);
   const myId = session?.user.id;
   const scopes: { id: LeaderboardScope; label: string; disabled?: boolean }[] = [
     { id: 'weekly', label: 'This week' },
     { id: 'monthly', label: 'This month' },
     { id: 'global', label: 'All time' },
     { id: 'country', label: country ? country : 'My country', disabled: !country },
+    { id: 'school', label: 'My school' },
+    { id: 'university', label: 'My university' },
+    { id: 'department', label: 'My department' },
+    { id: 'course', label: 'My courses', disabled: !enrolled.data?.length },
   ];
   return (
     <div className={`${panel} space-y-4`}>
@@ -399,7 +411,7 @@ function LeaderboardView() {
               role="tab"
               aria-selected={scope === s.id}
               disabled={s.disabled}
-              title={s.disabled ? 'Add your country in your profile to see this board' : undefined}
+              title={s.disabled ? (s.id === 'course' ? 'Enrol in a course to compare with its learners' : 'Add your country in your profile to see this board') : undefined}
               onClick={() => setScope(s.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-40 ${scope === s.id ? 'bg-[#7C3AED] text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
             >
@@ -408,12 +420,22 @@ function LeaderboardView() {
           ))}
         </div>
       </div>
+      {scope === 'course' && !!enrolled.data?.length && (
+        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          Course
+          <select value={courseId} onChange={(e) => setChosenCourse(e.target.value)} className="min-w-0 flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-900 dark:text-white">
+            {enrolled.data.map((c) => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+        </label>
+      )}
       {board.isLoading ? (
         <LoadingState layout="table" rows={5} />
       ) : board.error && !board.data ? (
         <ErrorState error={board.error} onRetry={board.retry} />
       ) : !board.data?.length ? (
-        <EmptyState icon={Trophy} title="No rankings yet" description="Learners appear here once they earn XP in this period." />
+        <EmptyState icon={Trophy} title="No rankings yet" description={['school', 'university', 'department'].includes(scope) ? `Add your ${scope} in your profile (Settings) to see learners from it, or nobody from it has earned XP yet.` : 'Learners appear here once they earn XP in this period.'} />
       ) : (
         <ol className="divide-y divide-gray-100 dark:divide-gray-800">
           {board.data.map((e) => (

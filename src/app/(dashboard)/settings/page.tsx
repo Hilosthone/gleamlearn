@@ -19,7 +19,7 @@ import {
   Lock,
   Sparkles,
   CheckCircle2,
-  Mail, Image as ImageIcon } from 'lucide-react';
+  Mail, Image as ImageIcon, Gauge } from 'lucide-react';
 import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
 import { Input } from '@/components/ui/Input';
@@ -32,6 +32,8 @@ import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { invalidateLearnerStats, sharedLearnerStats } from '@/lib/learning';
 import { STUDY_TIMES } from '@/lib/registration/wizard';
+import { loadUsage, percentUsed } from '@/lib/usage';
+import { loadAcademicDirectory, suggestionsFor } from '@/lib/academic-directory';
 import {
   COMPANION_KEYS,
   COMPANION_OPTIONS,
@@ -59,7 +61,7 @@ import {
 } from '@/lib/profile';
 
 type SubView = 'profile' | 'edit' | 'settings';
-type SettingsTab = 'picture' | 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy' | 'account';
+type SettingsTab = 'picture' | 'appearance' | 'notifications' | 'learning' | 'ai' | 'privacy' | 'usage' | 'account';
 
 const fieldClass =
   'w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -236,6 +238,18 @@ function EditProfile({ profile, onSaved, onDone }: { profile: LearnerProfile; on
   const setB = (k: keyof BasicForm) => (e: React.ChangeEvent<HTMLInputElement>) => setBasic({ ...basic, [k]: e.target.value });
   const setA = (k: keyof AcademicForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setAcademic({ ...academic, [k]: e.target.value });
+  // suggestions only: the fields stay free text, and a directory that fails to load just means no suggestions
+  const directory = useApiQuery(() => loadAcademicDirectory(), []);
+  const hints = suggestionsFor(directory.data?.institutions ?? [], academic.educationType, { school: academic.secondarySchool, university: academic.university, faculty: academic.faculty });
+  const levels = directory.data?.levels;
+  const datalist = (id: string, options: string[] | undefined) =>
+    options?.length ? (
+      <datalist id={id}>
+        {options.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
+    ) : null;
 
   return (
     <form onSubmit={submit} noValidate className={`${card} space-y-8`}>
@@ -266,18 +280,25 @@ function EditProfile({ profile, onSaved, onDone }: { profile: LearnerProfile; on
         </div>
         {academic.educationType === 'Secondary' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input id="pf-school" label="School" value={academic.secondarySchool} onChange={setA('secondarySchool')} maxLength={255} />
-            <Input id="pf-class" label="Class / level" value={academic.level} onChange={setA('level')} maxLength={255} />
-            <Input id="pf-stream" label="Stream" value={academic.secondaryStream} onChange={setA('secondaryStream')} maxLength={255} />
+            <Input id="pf-school" label="School" value={academic.secondarySchool} onChange={setA('secondarySchool')} maxLength={255} list="dl-schools" autoComplete="off" />
+            <Input id="pf-class" label="Class / level" value={academic.level} onChange={setA('level')} maxLength={255} list="dl-sec-levels" autoComplete="off" />
+            <Input id="pf-stream" label="Stream" value={academic.secondaryStream} onChange={setA('secondaryStream')} maxLength={255} list="dl-streams" autoComplete="off" />
+            {datalist('dl-schools', hints.schools)}
+            {datalist('dl-sec-levels', levels?.secondaryLevels)}
+            {datalist('dl-streams', levels?.secondaryStreams)}
           </div>
         )}
         {academic.educationType === 'University' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input id="pf-university" label="University" value={academic.university} onChange={setA('university')} maxLength={255} />
-            <Input id="pf-faculty" label="Faculty" value={academic.faculty} onChange={setA('faculty')} maxLength={255} />
-            <Input id="pf-department" label="Department" value={academic.department} onChange={setA('department')} maxLength={255} />
+            <Input id="pf-university" label="University" value={academic.university} onChange={setA('university')} maxLength={255} list="dl-universities" autoComplete="off" />
+            <Input id="pf-faculty" label="Faculty" value={academic.faculty} onChange={setA('faculty')} maxLength={255} list="dl-faculties" autoComplete="off" />
+            <Input id="pf-department" label="Department" value={academic.department} onChange={setA('department')} maxLength={255} list="dl-departments" autoComplete="off" />
             <Input id="pf-course" label="Course of study" value={academic.courseOfStudy} onChange={setA('courseOfStudy')} maxLength={255} />
-            <Input id="pf-level" label="Level" value={academic.level} onChange={setA('level')} maxLength={255} />
+            <Input id="pf-level" label="Level" value={academic.level} onChange={setA('level')} maxLength={255} list="dl-uni-levels" autoComplete="off" />
+            {datalist('dl-universities', hints.universities)}
+            {datalist('dl-faculties', hints.faculties)}
+            {datalist('dl-departments', hints.departments)}
+            {datalist('dl-uni-levels', levels?.universityLevels)}
           </div>
         )}
         <div className="space-y-2">
@@ -316,6 +337,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; icon: typeof Sun }[] = [
   { id: 'learning', label: 'Learning', icon: BookOpen },
   { id: 'ai', label: 'AI Companion', icon: Sparkles },
   { id: 'privacy', label: 'Privacy', icon: Shield },
+  { id: 'usage', label: 'Usage & limits', icon: Gauge },
   { id: 'account', label: 'Account Security', icon: Lock },
 ];
 
@@ -354,6 +376,7 @@ function SettingsHub({ profile, onSaved }: { profile: LearnerProfile | undefined
             description="Profile, leaderboard and activity visibility can't be saved yet, so no options are shown here."
           />
         )}
+        {tab === 'usage' && <UsageSettings />}
         {tab === 'account' && <AccountSettings profile={profile} />}
       </div>
     </div>
@@ -549,6 +572,45 @@ function CompanionSettings() {
             Save companion
           </Button>
         </>
+      )}
+    </div>
+  );
+}
+
+/** GET /usage: real counts; a bar only where the server enforces a limit. */
+function UsageSettings() {
+  const usage = useApiQuery(() => loadUsage(), []);
+  return (
+    <div className="space-y-6">
+      <SectionHeader title="Usage & limits" description="What you have used. Daily counts restart at midnight (Nigerian time)." />
+      {usage.isLoading ? (
+        <LoadingState layout="list" rows={4} />
+      ) : usage.error ? (
+        <ErrorState error={usage.error} onRetry={usage.retry} />
+      ) : (
+        <ul className="space-y-3">
+          {(usage.data ?? []).map((q) => {
+            const pct = percentUsed(q);
+            return (
+              <li key={q.key} className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">{q.label}</h3>
+                  <p className="text-xs font-extrabold text-gray-900 dark:text-white whitespace-nowrap">
+                    {q.limit === null ? q.used : `${q.used} of ${q.limit}`}
+                  </p>
+                </div>
+                {pct !== null ? (
+                  <div role="progressbar" aria-label={q.label} aria-valuemin={0} aria-valuemax={q.limit ?? 0} aria-valuenow={q.used} className="h-2 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+                    <div className={`h-full rounded-full ${pct >= 90 ? 'bg-amber-500' : 'bg-[#2563EB]'}`} style={{ width: `${pct}%` }} />
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500">No limit.</p>
+                )}
+                {q.remaining === 0 && <p className="text-[11px] text-amber-700 dark:text-amber-400">You have reached this limit. Delete some to add more.</p>}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

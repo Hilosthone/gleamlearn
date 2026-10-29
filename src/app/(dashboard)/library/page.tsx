@@ -29,7 +29,10 @@ import {
   parseTags,
   removeCourseFromLibrary,
   reviewCard,
+  updateCard,
+  updateDeck,
   updateNote,
+  type Flashcard,
   type Note,
 } from '@/lib/library';
 
@@ -390,6 +393,34 @@ function DeckList({ onOpen, onReview }: { onOpen: (id: string) => void; onReview
   );
 }
 
+/** PATCH /flashcards/:id: fix a card's question or answer (its review schedule is kept). */
+function CardEditor({ card: c, onDone }: { card: Flashcard; onDone: (saved: boolean) => void }) {
+  const [q, setQ] = useState(c.question);
+  const [a, setA] = useState(c.answer);
+  const save = useAsyncAction(async () => {
+    const changed = q.trim() !== c.question || a.trim() !== c.answer;
+    if (changed) await updateCard(c.id, q, a);
+    onDone(changed);
+  });
+  return (
+    <form className="space-y-3" aria-label="Edit card" onSubmit={(e) => { e.preventDefault(); if (q.trim() && a.trim()) void save.run(); }}>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Question</span>
+        <textarea className={input} value={q} onChange={(e) => setQ(e.target.value)} />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Answer</span>
+        <textarea className={input} value={a} onChange={(e) => setA(e.target.value)} />
+      </label>
+      {save.error && <ErrorState error={save.error} compact />}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" isLoading={save.isPending} disabled={!q.trim() || !a.trim()}>Save card</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => onDone(false)} disabled={save.isPending}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
 function DeckDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const deck = useApiQuery(() => loadDeck(id), [id]);
   const [q, setQ] = useState('');
@@ -406,6 +437,14 @@ function DeckDetail({ id, onBack }: { id: string; onBack: () => void }) {
     await deleteCard(cardId);
     deck.retry();
   });
+  const [editingCard, setEditingCard] = useState<string | null>(null);
+  const [deckForm, setDeckForm] = useState<{ title: string; description: string } | null>(null);
+  const saveDeck = useAsyncAction(async () => {
+    if (!deckForm) return;
+    await updateDeck(id, deckForm);
+    setDeckForm(null);
+    deck.retry();
+  });
 
   return (
     <div className="space-y-4">
@@ -418,10 +457,33 @@ function DeckDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <ErrorState error={deck.error} onRetry={deck.retry} />
       ) : deck.data ? (
         <>
-          <div>
-            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">{deck.data.title}</h2>
-            {deck.data.description && <p className="text-xs text-gray-500">{deck.data.description}</p>}
-          </div>
+          {deckForm ? (
+            <form className={`${card} p-5 space-y-3`} aria-label="Rename deck" onSubmit={(e) => { e.preventDefault(); if (deckForm.title.trim()) void saveDeck.run(); }}>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Deck name</span>
+                <input className={input} value={deckForm.title} maxLength={255} onChange={(e) => setDeckForm({ ...deckForm, title: e.target.value })} />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Description</span>
+                <input className={input} value={deckForm.description} onChange={(e) => setDeckForm({ ...deckForm, description: e.target.value })} />
+              </label>
+              {saveDeck.error && <ErrorState error={saveDeck.error} compact />}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" isLoading={saveDeck.isPending} disabled={!deckForm.title.trim()}>Save</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setDeckForm(null)} disabled={saveDeck.isPending}>Cancel</Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-extrabold text-gray-900 dark:text-white break-words">{deck.data.title}</h2>
+                {deck.data.description && <p className="text-xs text-gray-500">{deck.data.description}</p>}
+              </div>
+              <button type="button" onClick={() => { saveDeck.reset(); setDeckForm({ title: deck.data!.title, description: deck.data!.description }); }} aria-label="Rename deck" className="shrink-0 p-2 rounded-xl text-gray-400 hover:text-[var(--color-brand-blue)] hover:bg-gray-50 dark:hover:bg-gray-800">
+                <Pencil className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+          )}
           <form
             className={`${card} p-5 space-y-3`}
             aria-label="Add card"
@@ -448,24 +510,35 @@ function DeckDetail({ id, onBack }: { id: string; onBack: () => void }) {
             <EmptyState icon={Layers} title="This deck has no cards" description="Add a question and answer above." />
           ) : (
             <ul className="space-y-2">
-              {deck.data.cards.map((c) => (
+              {deck.data.cards.map((c) =>
+                editingCard === c.id ? (
+                  <li key={c.id} className={`${card} p-4`}>
+                    <CardEditor card={c} onDone={(saved) => { setEditingCard(null); if (saved) deck.retry(); }} />
+                  </li>
+                ) : (
                 <li key={c.id} className={`${card} p-4 flex items-start justify-between gap-3`}>
                   <div className="min-w-0 space-y-1">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-pre-line">{c.question}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-line">{c.answer}</p>
                     {c.nextReviewDate && <p className="text-[10px] text-gray-400">Next review {fmtDate(c.nextReviewDate)}</p>}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void remove.run(c.id)}
-                    disabled={remove.isPending}
-                    aria-label={`Delete card ${c.question}`}
-                    className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  </button>
+                  <div className="flex shrink-0">
+                    <button type="button" onClick={() => setEditingCard(c.id)} aria-label={`Edit card ${c.question}`} className="p-2 rounded-xl text-gray-400 hover:text-[var(--color-brand-blue)] hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <Pencil className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void remove.run(c.id)}
+                      disabled={remove.isPending}
+                      aria-label={`Delete card ${c.question}`}
+                      className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 </li>
-              ))}
+                ),
+              )}
             </ul>
           )}
         </>

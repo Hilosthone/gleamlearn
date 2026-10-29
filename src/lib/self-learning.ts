@@ -194,6 +194,8 @@ export const loadResources = async (filter: Parameters<typeof learningApi.resour
 export const loadResource = async (id: string) => toResource(await learningApi.resource(id));
 export const completeResource = (id: string) => learningApi.completeResource(id);
 export const deleteResource = (id: string) => learningApi.deleteResource(id);
+/** PATCH /learning/resources/:id { title } (1–255 characters) */
+export const renameResource = async (id: string, title: string) => toResource(await learningApi.updateResource(id, { title: title.trim() }));
 
 /** Where a resource item opens (decks and course plans open what they created). */
 export function resourceHref(r: LearningResourceItem): string {

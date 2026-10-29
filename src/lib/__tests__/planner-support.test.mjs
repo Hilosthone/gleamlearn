@@ -92,3 +92,30 @@ test('subscription status: 501 → unavailable, inactive → none, active → pl
   responder = () => json(200, { active: true, subscription: { plan: { name: 'Termly' }, endDate: '2027-01-01' } });
   assert.deepEqual(await S.loadSubscriptionStatus(), { kind: 'active', planName: 'Termly', endsAt: '2027-01-01' });
 });
+
+test('my reports: server fields only, status upper-cased; question reports post to /questions/:id/report', async () => {
+  const rows = [
+    { id: 'r1', type: 'OTHER', target: 'QUESTION', targetId: 'q1', reason: 'Problem with a question', details: 'Key is wrong', status: 'resolved', createdAt: '2026-10-29T10:00:00Z' },
+    { reason: 'no id' },
+  ];
+  assert.deepEqual(S.toMyReports(rows), [{ id: 'r1', reason: 'Problem with a question', details: 'Key is wrong', target: 'QUESTION', status: 'RESOLVED', createdAt: '2026-10-29T10:00:00Z' }]);
+  assert.deepEqual(S.toMyReports({ not: 'a list' }), []);
+  responder = () => json(201, { id: 'r2' });
+  await S.reportQuestion('q 9', '  Option C is missing  ');
+  const last = calls.at(-1);
+  assert.match(last.url, /\/questions\/q%209\/report$/, 'ids from external providers are encoded');
+  assert.deepEqual(JSON.parse(last.init.body), { type: 'OTHER', reason: 'Problem with a question', details: 'Option C is missing' });
+});
+
+test('goal edits: only changed fields, progress and target as numbers; invalid drafts are refused', () => {
+  const [g] = P.toGoals({ goals: [{ id: 'g1', title: 'Past papers', description: '', targetValue: 10, currentValue: 2, targetDate: '2026-12-01' }] });
+  assert.deepEqual([g.current, g.target, g.percent], [2, 10, 20]);
+  const d = P.goalDraftOf(g);
+  assert.deepEqual(P.goalChanges(g, d), { changes: {} });
+  assert.deepEqual(P.goalChanges(g, { ...d, current: '6', title: ' Past papers ' }), { changes: { currentValue: 6 } });
+  assert.deepEqual(P.goalChanges(g, { ...d, target: '12.5', targetDate: '2026-12-20' }), { changes: { targetValue: 12.5, targetDate: '2026-12-20' } });
+  assert.ok('error' in P.goalChanges(g, { ...d, target: '0' }));
+  assert.ok('error' in P.goalChanges(g, { ...d, current: '-1' }));
+  assert.ok('error' in P.goalChanges(g, { ...d, current: '' }));
+  assert.ok('error' in P.goalChanges(g, { ...d, title: '  ' }));
+});

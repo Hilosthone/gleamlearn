@@ -31,6 +31,7 @@ export default function Sidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
     { name: 'Learn', href: '/learn', icon: BookOpen },
+    { name: 'My Courses', href: '/my-courses', icon: GraduationCap },
     { name: 'Library', href: '/library', icon: FolderKanban },
     { name: 'Practice', href: '/practice', icon: Target },
     { name: 'Exams', href: '/exams', icon: GraduationCap },
@@ -61,14 +62,14 @@ export default function Sidebar() {
           <div className="w-9 h-9 relative rounded-xl overflow-hidden flex items-center justify-center shadow-md shadow-blue-500/20 bg-white">
             <Image 
               src="/gleamlearn-logo.jpg" 
-              alt="gleamLearn Logo" 
+              alt="GleamLearn Logo" 
               fill
               className="object-cover"
               priority
             />
           </div>
           <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            gleam<span className="text-[var(--color-brand-blue)]">Learn</span>
+            Gleam<span className="text-[var(--color-brand-blue)]">Learn</span>
           </span>
         </Link>
       </div>

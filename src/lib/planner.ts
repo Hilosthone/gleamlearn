@@ -9,10 +9,12 @@
  *   POST /planner/regenerate          → moves unfinished sessions dated today or earlier to two days from now
  *   POST /planner/generate            → 501: no AI plan generation yet
  *   GET/POST /goals, POST /goals/:id/complete, DELETE /goals/:id   { title, description?, targetValue?, targetDate? }
+ *   PATCH /goals/:id { title?, description?, targetDate?, targetValue? (> 0), currentValue? (kept within the target;
+ *                      reaching it completes the goal, lowering it reopens it) }
  *   /calendar                         → 501: its tables don't exist yet
  */
 
-import { goalsApi, plannerApi, type CreatePlannerItemPayload } from './api.ts';
+import { calendarApi, goalsApi, plannerApi, studySessionsApi, type CreatePlannerItemPayload } from './api.ts';
 
 type Raw = Record<string, unknown>;
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -128,6 +130,9 @@ export interface Goal {
   targetDate: string | null;
   percent: number;
   completed: boolean;
+  /** progress so far and the target, in the goal's own unit (100 = percent when no target was set) */
+  current: number;
+  target: number;
 }
 
 export function toGoals(res: unknown): Goal[] {
@@ -144,6 +149,8 @@ export function toGoals(res: unknown): Goal[] {
         targetDate: str(r.targetDate).slice(0, 10) || null,
         percent: completed ? 100 : target > 0 ? Math.max(0, Math.min(100, Math.round((current / target) * 100))) : 0,
         completed,
+        current,
+        target,
       };
     })
     .sort((a, b) => Number(a.completed) - Number(b.completed));
@@ -153,4 +160,139 @@ export const loadGoals = async () => toGoals(await goalsApi.getAllGoals());
 export const createGoal = (g: { title: string; description: string; targetDate: string }) =>
   goalsApi.createGoal({ title: g.title.trim(), ...(g.description.trim() ? { description: g.description.trim() } : {}), ...(g.targetDate ? { targetDate: g.targetDate } : {}) });
 export const completeGoal = (id: string) => goalsApi.completeGoal(id);
+
+export interface GoalDraft {
+  title: string;
+  description: string;
+  targetDate: string;
+  target: string;
+  current: string;
+}
+export const goalDraftOf = (g: Goal): GoalDraft => ({ title: g.title, description: g.description, targetDate: g.targetDate ?? '', target: String(g.target), current: String(g.current) });
+
+/** Only the changed fields, as PATCH /goals/:id expects them; an error message instead when the draft is invalid. */
+export function goalChanges(g: Goal, d: GoalDraft): { changes: Record<string, string | number> } | { error: string } {
+  const title = d.title.trim();
+  if (!title) return { error: 'Give the goal a name.' };
+  const target = Number(d.target);
+  const current = Number(d.current);
+  if (!d.target.trim() || !Number.isFinite(target) || target <= 0) return { error: 'The target must be a number above 0.' };
+  if (!d.current.trim() || !Number.isFinite(current) || current < 0) return { error: 'Progress must be 0 or more.' };
+  const out: Record<string, string | number> = {};
+  if (title !== g.title) out.title = title;
+  if (d.description.trim() !== g.description) out.description = d.description.trim();
+  if (d.targetDate && d.targetDate !== (g.targetDate ?? '')) out.targetDate = d.targetDate;
+  if (target !== g.target) out.targetValue = target;
+  if (current !== g.current) out.currentValue = current;
+  return { changes: out };
+}
+
+export const updateGoal = (id: string, changes: Record<string, string | number>) => goalsApi.updateGoal(id, changes);
 export const deleteGoal = (id: string) => goalsApi.deleteGoal(id);
+
+// ---------------------------------------------------------------------------------------------------------------
+// Generated study plans (POST /planner/generate: from one of the learner's courses or exam-prep plans)
+// ---------------------------------------------------------------------------------------------------------------
+
+export type Intensity = 'light' | 'normal' | 'intensive';
+export interface GeneratedPlanSummary {
+  sessions: number;
+  from: string | null;
+  to: string | null;
+  topics: number;
+  targetTitle: string;
+}
+
+export async function generatePlan(targetId: string, deadline: string, intensity: Intensity): Promise<GeneratedPlanSummary> {
+  const r = ((await plannerApi.generatePlanner({ targetId, deadline, intensity })) ?? {}) as Raw;
+  const target = (r.target ?? {}) as Raw;
+  return {
+    sessions: typeof r.sessions === 'number' ? r.sessions : 0,
+    from: typeof r.from === 'string' ? r.from : null,
+    to: typeof r.to === 'string' ? r.to : null,
+    topics: typeof r.topics === 'number' ? r.topics : 0,
+    targetTitle: typeof target.title === 'string' ? target.title : '',
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Live study sessions (POST /study-sessions/start, /:id/pause, /:id/resume, /:id/complete)
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface LiveSession {
+  id: string;
+  title: string;
+  status: 'active' | 'paused' | 'completed';
+  durationSeconds: number;
+  startTime: string | null;
+}
+
+export function toLiveSession(res: unknown): LiveSession | null {
+  const r = (((res as Raw | null)?.session ?? res) ?? {}) as Raw;
+  if (typeof r.id !== 'string') return null;
+  const status = r.status === 'paused' || r.status === 'completed' ? r.status : 'active';
+  return { id: r.id, title: typeof r.title === 'string' ? r.title : 'Study session', status, durationSeconds: typeof r.durationSeconds === 'number' ? r.durationSeconds : 0, startTime: typeof r.startTime === 'string' ? r.startTime : null };
+}
+
+/** Seconds studied so far: stored seconds, plus the running stretch while active. */
+export function elapsedSeconds(s: LiveSession, now = Date.now()): number {
+  const running = s.status === 'active' && s.startTime ? Math.max(0, Math.floor((now - Date.parse(s.startTime)) / 1000)) : 0;
+  return s.durationSeconds + running;
+}
+
+/** The learner's open (active or paused) session, if any — so the timer survives a reload. */
+export async function loadOpenSession(): Promise<LiveSession | null> {
+  const res = (await studySessionsApi.getAllStudySessions()) as Raw | unknown[] | null;
+  const rows = Array.isArray(res) ? res : Array.isArray((res as Raw | null)?.sessions) ? ((res as Raw).sessions as unknown[]) : [];
+  return rows.map(toLiveSession).find((s): s is LiveSession => !!s && s.status !== 'completed') ?? null;
+}
+export const startSession = async (title: string) => toLiveSession(await studySessionsApi.startStudySession({ title: title.trim().slice(0, 200) }));
+export const pauseSession = async (id: string) => toLiveSession(await studySessionsApi.pauseStudySession(id));
+export const resumeSession = async (id: string) => toLiveSession(await studySessionsApi.resumeStudySession(id));
+export const completeSession = async (id: string) => toLiveSession(await studySessionsApi.completeStudySession(id));
+
+// ---------------------------------------------------------------------------------------------------------------
+// Calendar events (GET /calendar/month?year&month, POST/PATCH/DELETE /calendar/events)
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface CalendarItem {
+  id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  isAllDay: boolean;
+}
+
+export function toCalendarItems(res: unknown): CalendarItem[] {
+  const rows = Array.isArray(res) ? res : Array.isArray((res as Raw | null)?.events) ? ((res as Raw).events as unknown[]) : [];
+  return rows
+    .map((x) => (x ?? {}) as Raw)
+    .filter((r) => typeof r.id === 'string' && typeof r.startTime === 'string')
+    .map((r) => ({ id: r.id as string, title: typeof r.title === 'string' ? r.title : 'Event', description: typeof r.description === 'string' ? r.description : '', startTime: r.startTime as string, endTime: typeof r.endTime === 'string' ? r.endTime : (r.startTime as string), isAllDay: r.isAllDay === true }));
+}
+
+export interface EventDraft {
+  title: string;
+  date: string; // YYYY-MM-DD (local)
+  start: string; // HH:MM
+  end: string; // HH:MM
+  allDay: boolean;
+  description: string;
+}
+
+/** The DTO wants ISO start/end; local date + times are converted here. Returns the payload or the problem. */
+export function eventPayload(d: EventDraft): { title: string; description?: string; startTime: string; endTime: string; isAllDay: boolean } | string {
+  if (!d.title.trim()) return 'Give the event a title.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return 'Choose a date.';
+  const start = new Date(`${d.date}T${d.allDay ? '00:00' : d.start || '09:00'}:00`);
+  const end = new Date(`${d.date}T${d.allDay ? '23:59' : d.end || d.start || '10:00'}:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'Check the times.';
+  if (end < start) return 'The event cannot end before it starts.';
+  return { title: d.title.trim().slice(0, 200), ...(d.description.trim() ? { description: d.description.trim() } : {}), startTime: start.toISOString(), endTime: end.toISOString(), isAllDay: d.allDay };
+}
+
+export const loadMonthEvents = async (year: number, month: number) => toCalendarItems(await calendarApi.getEventsByMonth(year, month));
+export const createEvent = (p: Exclude<ReturnType<typeof eventPayload>, string>) => calendarApi.createEvent(p);
+export const updateEvent = (id: string, p: Exclude<ReturnType<typeof eventPayload>, string>) => calendarApi.updateEvent(id, p);
+export const deleteEvent = (id: string) => calendarApi.deleteEvent(id);

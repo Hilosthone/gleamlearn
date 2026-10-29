@@ -7,7 +7,7 @@ import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
-import { HELP_ARTICLES, PROBLEM_CATEGORIES, SUPPORT_EMAIL, mailtoHref, reportsAvailable, submitFeedback, submitProblem } from '@/lib/support';
+import { HELP_ARTICLES, PROBLEM_CATEGORIES, REPORT_STATUS_LABEL, SUPPORT_EMAIL, loadMyReports, mailtoHref, reportsAvailable, submitFeedback, submitProblem } from '@/lib/support';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const input =
@@ -60,7 +60,7 @@ export default function SupportPage() {
           ) : available.error ? (
             <ErrorState error={available.error} onRetry={available.retry} />
           ) : tab === 'report' ? (
-            <Report online={available.data === true} />
+            <ReportTab online={available.data === true} />
           ) : (
             <Feedback online={available.data === true} />
           ))}
@@ -107,12 +107,63 @@ function OfflineNote() {
   );
 }
 
-function Report({ online }: { online: boolean }) {
+function ReportTab({ online }: { online: boolean }) {
+  const [sent, setSent] = useState(0);
+  return (
+    <div className="space-y-6">
+      <Report online={online} onSent={() => setSent((n) => n + 1)} />
+      {online && <MyReports version={sent} />}
+    </div>
+  );
+}
+
+/** GET /reports/me: what the learner reported and what moderators decided. */
+function MyReports({ version }: { version: number }) {
+  const reports = useApiQuery(() => loadMyReports(), [version]);
+  return (
+    <section className={`${card} p-6 space-y-3 max-w-2xl`} aria-label="Your reports">
+      <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Your reports</h2>
+      {reports.isLoading ? (
+        <LoadingState layout="list" rows={2} />
+      ) : reports.error ? (
+        <ErrorState error={reports.error} onRetry={reports.retry} compact />
+      ) : !reports.data?.length ? (
+        <p className="text-xs text-gray-500">You haven&apos;t reported anything.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+          {reports.data.map((r) => (
+            <li key={r.id} className="py-3 flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-gray-900 dark:text-white">{r.reason}</p>
+                {r.details && <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 break-words">{r.details}</p>}
+                {r.createdAt && <p className="text-[10px] text-gray-400 mt-0.5">{new Date(r.createdAt).toLocaleString()}</p>}
+              </div>
+              <span
+                className={`shrink-0 self-start px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  r.status === 'RESOLVED'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                    : r.status === 'REJECTED'
+                      ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                      : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                }`}
+              >
+                {REPORT_STATUS_LABEL[r.status] ?? r.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Report({ online, onSent }: { online: boolean; onSent: () => void }) {
   const [category, setCategory] = useState<string>(PROBLEM_CATEGORIES[0]);
   const [description, setDescription] = useState('');
   const send = useAsyncAction(async () => {
     const res = await submitProblem(category, description);
     setDescription('');
+    onSent();
     return res;
   });
   const ready = description.trim().length >= 10;

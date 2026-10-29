@@ -92,6 +92,8 @@ export interface SubmitResult {
   xpAwarded: number;
   coinsAwarded: number;
   message: string;
+  /** the stored attempt (null when the server could not save it yet) */
+  attemptId: string | null;
 }
 
 export function toSubmitResult(res: unknown): SubmitResult {
@@ -106,6 +108,7 @@ export function toSubmitResult(res: unknown): SubmitResult {
     xpAwarded: num(r.xpAwarded),
     coinsAwarded: num(r.coinsAwarded),
     message: str(r.message),
+    attemptId: r.saved === true && typeof r.attemptId === 'string' ? r.attemptId : null,
   };
 }
 
@@ -205,3 +208,118 @@ export async function generatePracticeQuiz(topic: string): Promise<GeneratedQues
   })) as Raw;
   return parseGeneratedQuiz(res?.quiz ?? res?.data ?? res);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Stored attempts at official quizzes, tests and exams (start → submit → results → history, exam readiness)
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface OfficialQuestionReview {
+  index: number;
+  question: string;
+  options: string[];
+  chosen: string | null;
+  answer: string | null;
+  correct: boolean;
+  gradable: boolean;
+  explanation: string;
+  topic: string;
+}
+
+export interface OfficialAttempt {
+  id: string;
+  kind: AssessmentKind;
+  assessmentId: string;
+  title: string;
+  status: 'in_progress' | 'submitted';
+  score: number | null;
+  correctCount: number | null;
+  gradableCount: number | null;
+  totalQuestions: number;
+  graded: boolean;
+  startedAt: string;
+  deadlineAt: string | null;
+  submittedAt: string | null;
+  resumed: boolean;
+  review: { questions: OfficialQuestionReview[]; topics: { topic: string; correct: number; total: number; percent: number }[] } | null;
+}
+
+const kindOf = (v: unknown): AssessmentKind => (v === 'test' || v === 'exam' ? v : 'quiz');
+const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+
+export function toOfficialAttempt(res: unknown): OfficialAttempt {
+  const r = (res ?? {}) as Raw;
+  if (typeof r.id !== 'string') throw new Error('This attempt could not be read.');
+  const rv = r.review && typeof r.review === 'object' ? (r.review as Raw) : null;
+  const rows = (v: unknown) => (Array.isArray(v) ? (v.filter((x) => x && typeof x === 'object') as Raw[]) : []);
+  return {
+    id: r.id,
+    kind: kindOf(r.kind),
+    assessmentId: str(r.assessmentId),
+    title: str(r.title) || 'Untitled',
+    status: r.status === 'submitted' ? 'submitted' : 'in_progress',
+    score: n(r.score),
+    correctCount: n(r.correctCount),
+    gradableCount: n(r.gradableCount),
+    totalQuestions: n(r.totalQuestions) ?? 0,
+    graded: r.graded === true,
+    startedAt: str(r.startedAt),
+    deadlineAt: str(r.deadlineAt) || null,
+    submittedAt: str(r.submittedAt) || null,
+    resumed: r.resumed === true,
+    review: rv
+      ? {
+          questions: rows(rv.questions).map((q) => ({ index: n(q.index) ?? 0, question: str(q.question), options: Array.isArray(q.options) ? q.options.map((o) => str(o)) : [], chosen: str(q.chosen) || null, answer: str(q.answer) || null, correct: q.correct === true, gradable: q.gradable !== false, explanation: str(q.explanation), topic: str(q.topic) })),
+          topics: rows(rv.topics).map((t) => ({ topic: str(t.topic), correct: n(t.correct) ?? 0, total: n(t.total) ?? 0, percent: n(t.percent) ?? 0 })),
+        }
+      : null,
+  };
+}
+
+const START = { quiz: (id: string) => quizzesApi.startQuizAttempt(id), test: (id: string) => testsApi.startTestAttempt(id), exam: (id: string) => examsApi.startExamAttempt(id) };
+const HISTORY = { quiz: () => quizzesApi.getUserAttempts(), test: () => testsApi.getUserTestAttempts(), exam: () => examsApi.getStudentExamHistory() };
+const ATTEMPT = { quiz: (id: string) => quizzesApi.getAttemptById(id), test: (id: string) => testsApi.getTestAttemptById(id), exam: (id: string) => examsApi.getExamAttemptById(id) };
+
+/** Starts (or resumes) a stored attempt; tests and exams come back with a deadline from their duration. */
+export const startOfficialAttempt = async (kind: AssessmentKind, id: string) => toOfficialAttempt(await START[kind](id));
+export const loadOfficialAttempt = async (kind: AssessmentKind, attemptId: string) => toOfficialAttempt(await ATTEMPT[kind](attemptId));
+
+/** The learner's attempts at official quizzes, tests and exams, newest first. A kind the server can't list yet is skipped. */
+export async function loadOfficialHistory(): Promise<{ attempts: OfficialAttempt[]; unavailable: AssessmentKind[] }> {
+  const kinds: AssessmentKind[] = ['quiz', 'test', 'exam'];
+  const settled = await Promise.allSettled(kinds.map((k) => HISTORY[k]()));
+  const attempts: OfficialAttempt[] = [];
+  const unavailable: AssessmentKind[] = [];
+  settled.forEach((s, i) => {
+    if (s.status === 'fulfilled') attempts.push(...(Array.isArray(s.value) ? s.value : []).map(toOfficialAttempt));
+    else if ((s.reason as { kind?: string })?.kind === 'not_implemented') unavailable.push(kinds[i]);
+    else throw s.reason;
+  });
+  return { attempts: attempts.sort((a, b) => (b.startedAt > a.startedAt ? 1 : -1)), unavailable };
+}
+
+export interface ExamReadiness {
+  status: 'not_started' | 'building' | 'ready';
+  attempts: number;
+  bestScore: number | null;
+  lastScore: number | null;
+  recentAverage: number | null;
+  trend: number | null;
+  weakTopics: { topic: string; percent: number }[];
+  readyAt: number;
+}
+
+export async function loadExamReadiness(examId: string): Promise<ExamReadiness> {
+  const r = ((await examsApi.getExamReadiness(examId)) ?? {}) as Raw;
+  return {
+    status: r.status === 'ready' ? 'ready' : r.status === 'building' ? 'building' : 'not_started',
+    attempts: n(r.attempts) ?? 0,
+    bestScore: n(r.bestScore),
+    lastScore: n(r.lastScore),
+    recentAverage: n(r.recentAverage),
+    trend: n(r.trend),
+    weakTopics: (Array.isArray(r.weakTopics) ? r.weakTopics : []).map((t) => ({ topic: str((t as Raw).topic), percent: n((t as Raw).percent) ?? 0 })),
+    readyAt: n(r.readyAt) ?? 70,
+  };
+}
+
+export const officialAttemptHref = (a: Pick<OfficialAttempt, 'kind' | 'id'>) => `/practice/official/${a.kind}/attempts/${encodeURIComponent(a.id)}`;

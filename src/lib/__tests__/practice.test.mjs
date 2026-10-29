@@ -22,8 +22,11 @@ test('answers are keyed by question index (what the backend grader matches)', ()
 
 test('submit results: real server fields only', () => {
   const r = toSubmitResult({ status: 'success', score: 50, totalQuestions: 2, correctAnswers: 1, graded: true, passed: false, xpAwarded: 0, coinsAwarded: 0, message: 'graded' });
-  assert.deepEqual(r, { score: 50, totalQuestions: 2, correctAnswers: 1, graded: true, passed: false, xpAwarded: 0, coinsAwarded: 0, message: 'graded' });
+  assert.deepEqual(r, { score: 50, totalQuestions: 2, correctAnswers: 1, graded: true, passed: false, xpAwarded: 0, coinsAwarded: 0, message: 'graded', attemptId: null });
   assert.equal(toSubmitResult({ score: 100, testId: 't' }).passed, null, 'tests have no pass/fail');
+  // the stored attempt is linked only when the server says it was saved
+  assert.equal(toSubmitResult({ score: 100, saved: true, attemptId: 'a1' }).attemptId, 'a1');
+  assert.equal(toSubmitResult({ score: 100, saved: false, attemptId: 'a1' }).attemptId, null);
 });
 
 test('generated quizzes are parsed from fenced or bare model output; unusable questions are dropped', () => {

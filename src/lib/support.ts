@@ -2,9 +2,11 @@
  * ---------------------------------------------------------------------------
  * lib/support.ts — Problem reports and feedback (typed wrappers over existing api.ts clients)
  * ---------------------------------------------------------------------------
- * Backend contract (verified 2026-10-26):
- *   GET  /reports/me                         → the learner's reports; 501 FEATURE_UNAVAILABLE while the tables don't exist
- *   POST /reports { type, reason, details? } → type ∈ SPAM | INAPPROPRIATE | COPYRIGHT | OTHER
+ * Backend contract (verified 2026-10-29):
+ *   GET  /reports/me                         → [{ id, type, target, targetId, reason, details, status, createdAt }];
+ *                                              501 FEATURE_UNAVAILABLE if the table is missing
+ *   POST /reports { type, reason, details? } → type ∈ SPAM | INAPPROPRIATE | COPYRIGHT | OTHER; stored for moderators
+ *   POST /questions/:id/report               → the same, about one question (past questions, question bank)
  *   POST /feedback { message, rating 1..5 }
  * While these are unavailable the page offers an email to the published support address instead.
  */
@@ -30,6 +32,38 @@ export async function reportsAvailable(): Promise<boolean> {
 export const submitProblem = (category: string, description: string) =>
   reportsFeedbackApi.submitReport({ type: 'OTHER', reason: category, details: description.trim() });
 
+export const reportQuestion = (questionId: string, description: string) =>
+  reportsFeedbackApi.reportQuestion(encodeURIComponent(questionId), { type: 'OTHER', reason: 'Problem with a question', details: description.trim() });
+
+export interface MyReport {
+  id: string;
+  reason: string;
+  details: string | null;
+  /** GENERAL, QUESTION or CONTENT */
+  target: string;
+  /** PENDING, RESOLVED or REJECTED (set by moderators) */
+  status: string;
+  createdAt: string;
+}
+
+export function toMyReports(res: unknown): MyReport[] {
+  return (Array.isArray(res) ? res : [])
+    .map((x) => (x ?? {}) as Record<string, unknown>)
+    .filter((r) => typeof r.id === 'string' && typeof r.reason === 'string')
+    .map((r) => ({
+      id: r.id as string,
+      reason: r.reason as string,
+      details: typeof r.details === 'string' ? r.details : null,
+      target: typeof r.target === 'string' ? r.target : 'GENERAL',
+      status: typeof r.status === 'string' ? r.status.toUpperCase() : 'PENDING',
+      createdAt: typeof r.createdAt === 'string' ? r.createdAt : '',
+    }));
+}
+
+export const loadMyReports = async () => toMyReports(await reportsFeedbackApi.getMyReports());
+
+export const REPORT_STATUS_LABEL: Record<string, string> = { PENDING: 'Waiting for review', RESOLVED: 'Resolved', REJECTED: 'Closed — no action needed' };
+
 export const submitFeedback = (rating: number, message: string) => reportsFeedbackApi.submitFeedback({ rating: Math.round(rating), message: message.trim() });
 
 export function mailtoHref(subject: string, body: string): string {
@@ -50,7 +84,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   { id: 'ai', topic: 'AI', title: 'Using the AI assistant and tutor', body: 'Open AI. The assistant and tutor sessions save your conversations. Answers appear in full once ready. Each assistant message is answered on its own, so include the details the AI needs in every question.' },
   { id: 'xp', topic: 'Progress', title: 'How XP and coins are earned', body: 'XP and coins are awarded by the server when you submit a quiz. Submitting the same quiz again is graded but does not earn again. Your totals and history are in Progress.' },
   { id: 'streak', topic: 'Progress', title: 'Keeping your streak', body: 'Your streak counts the days you study: complete a lesson, submit a quiz, test or exam, review flashcards, or check in on Progress → Streak. Signing in alone does not count. Days follow Nigerian time (WAT). If you miss a day and have a recovery token, you can use it there to restore your streak.' },
-  { id: 'practice', topic: 'Practice', title: 'How quizzes, tests and exams are graded', body: 'Your answers are graded automatically against the stored answers and you see your score straight away. Past attempts are not kept in a history yet.' },
+  { id: 'practice', topic: 'Practice', title: 'How quizzes, tests and exams are graded', body: 'Your answers are graded automatically against the stored answers and you see your score straight away. Official quizzes, tests and exams are saved: Practice → History lists them, and each one has a review of every question.' },
   { id: 'library', topic: 'Library', title: 'Saving courses, notes and flashcards', body: 'Use “Save to library” on a course page. Notes and flashcard decks are created in Library; flashcards due today appear under Review today. Upload your own PDF, Word or text files under Uploaded materials, and create private courses of your own under My courses. Only you can see them.' },
   { id: 'premium', topic: 'Premium', title: 'Premium plans and payments', body: 'Premium plans are not available yet and no payments are taken. Everything you can use today is free.' },
 ];

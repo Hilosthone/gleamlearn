@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { CalendarDays, Check, Clock, FastForward, Plus, SkipForward, Target, Trash2, Sparkles } from 'lucide-react';
+import { CalendarDays, Check, Clock, FastForward, Pencil, Plus, SkipForward, Target, Trash2, Sparkles } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
-import { EmptyState, ErrorState, FeatureUnavailable, LoadingState } from '@/components/ui/states';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import {
@@ -15,17 +15,23 @@ import {
   completePlanItem,
   createGoal,
   deleteGoal,
+  goalChanges,
+  goalDraftOf,
   groupPlan,
   loadGoals,
   loadPlan,
   localDate,
   rescheduleMissed,
   skipPlanItem,
+  updateGoal,
   validatePlanDraft,
+  type Goal,
+  type GoalDraft,
   type PlanDraft,
   type PlanItem,
 } from '@/lib/planner';
 import { loadStudySessions } from '@/lib/gamification';
+import { CalendarPanel, GeneratePlan, LiveSessionPanel } from '@/components/planner/PlannerTools';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const input =
@@ -72,9 +78,7 @@ export default function PlannerPage() {
         {view === 'plan' && <Plan />}
         {view === 'goals' && <Goals />}
         {view === 'sessions' && <Sessions />}
-        {view === 'calendar' && (
-          <FeatureUnavailable title="The calendar isn't available yet" description="Calendar events can't be stored yet. Plan sessions in Study plan instead; they are saved to your account." />
-        )}
+        {view === 'calendar' && <CalendarPanel />}
       </div>
     </div>
   );
@@ -84,6 +88,7 @@ export default function PlannerPage() {
 
 function Plan() {
   const plan = useApiQuery(() => loadPlan(), []);
+  const generator = <GeneratePlan onDone={() => plan.retry()} />;
   const today = localDate(new Date());
   const groups = useMemo(() => groupPlan(plan.data ?? [], today), [plan.data, today]);
   const [draft, setDraft] = useState<PlanDraft | null>(null);
@@ -114,6 +119,7 @@ function Plan() {
 
   return (
     <div className="space-y-4">
+      {generator}
       <div className="flex flex-wrap gap-2">
         {!draft && (
           <Button type="button" size="sm" onClick={() => { add.reset(); setDraftError(null); setDraft({ title: '', date: today, startTime: '', endTime: '', activityType: 'study' }); }}>
@@ -230,6 +236,55 @@ function PlanSection({ title, items, onMark, busy, empty, action }: { title: str
 
 // Goals ----------------------------------------------------------------------------------------------------------
 
+const fmtAmount = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** PATCH /goals/:id: rename, re-date, change the target, or record progress (reaching the target completes it). */
+function GoalEditor({ goal, onDone }: { goal: Goal; onDone: (saved: boolean) => void }) {
+  const [draft, setDraft] = useState<GoalDraft>(() => goalDraftOf(goal));
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const save = useAsyncAction(async () => {
+    const res = goalChanges(goal, draft);
+    if ('error' in res) return setInvalid(res.error);
+    setInvalid(null);
+    if (Object.keys(res.changes).length) await updateGoal(goal.id, res.changes);
+    onDone(Object.keys(res.changes).length > 0);
+  });
+  const field = (k: keyof GoalDraft) => ({ value: draft[k], onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value }) });
+  return (
+    <form className="space-y-3" aria-label={`Edit goal ${goal.title}`} onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Goal</span>
+        <input className={input} maxLength={200} {...field('title')} />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Details</span>
+        <input className={input} maxLength={2000} {...field('description')} />
+      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Progress so far</span>
+          <input type="number" min={0} step="any" inputMode="decimal" className={input} {...field('current')} />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Target</span>
+          <input type="number" min={0} step="any" inputMode="decimal" className={input} {...field('target')} />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Target date</span>
+          <input type="date" className={input} {...field('targetDate')} />
+        </label>
+      </div>
+      <p className="text-[11px] text-gray-500">Use any unit — hours, topics, past papers. Reaching the target marks the goal complete.</p>
+      {invalid && <p className="text-xs text-red-600" role="alert">{invalid}</p>}
+      {save.error && <ErrorState error={save.error} compact />}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" isLoading={save.isPending}>Save</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => onDone(false)} disabled={save.isPending}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
 function Goals() {
   const goals = useApiQuery(() => loadGoals(), []);
   const [form, setForm] = useState<{ title: string; description: string; targetDate: string } | null>(null);
@@ -248,6 +303,7 @@ function Goals() {
     await deleteGoal(id);
     goals.retry();
   });
+  const [editing, setEditing] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -286,7 +342,12 @@ function Goals() {
         !form && <EmptyState icon={Target} title="No goals yet" description="Set a goal and mark it complete when you reach it." />
       ) : (
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {(goals.data ?? []).map((g) => (
+          {(goals.data ?? []).map((g) =>
+            editing === g.id ? (
+              <li key={g.id} className={`${card} p-5`}>
+                <GoalEditor goal={g} onDone={(saved) => { setEditing(null); if (saved) goals.retry(); }} />
+              </li>
+            ) : (
             <li key={g.id} className={`${card} p-5 space-y-3`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -301,15 +362,22 @@ function Goals() {
               <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={g.percent} aria-valuemin={0} aria-valuemax={100} aria-label={`${g.title} progress`}>
                 <div className="h-full bg-[var(--color-brand-blue)]" style={{ width: `${g.percent}%` }} />
               </div>
-              {g.completed ? (
-                <p className="text-xs font-semibold text-emerald-600">Completed</p>
-              ) : (
-                <Button type="button" size="sm" variant="outline" disabled={complete.isPending} onClick={() => void complete.run(g.id)}>
-                  <Check className="w-3.5 h-3.5" aria-hidden="true" /> Mark complete
+              <p className="text-[11px] text-gray-500">{fmtAmount(g.current)} of {fmtAmount(g.target)} ({g.percent}%)</p>
+              <div className="flex flex-wrap gap-2">
+                {g.completed ? (
+                  <p className="text-xs font-semibold text-emerald-600 self-center">Completed</p>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" disabled={complete.isPending} onClick={() => void complete.run(g.id)}>
+                    <Check className="w-3.5 h-3.5" aria-hidden="true" /> Mark complete
+                  </Button>
+                )}
+                <Button type="button" size="sm" variant="outline" onClick={() => setEditing(g.id)} aria-label={`Edit goal ${g.title}`}>
+                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Edit or update progress
                 </Button>
-              )}
+              </div>
             </li>
-          ))}
+            ),
+          )}
         </ul>
       )}
     </div>
@@ -320,11 +388,14 @@ function Goals() {
 
 function Sessions() {
   const sessions = useApiQuery(() => loadStudySessions(), []);
-  if (sessions.isLoading) return <LoadingState label="Loading study sessions…" />;
-  if (sessions.error && !sessions.data) return <ErrorState error={sessions.error} onRetry={sessions.retry} />;
+  const timer = <LiveSessionPanel onFinished={() => sessions.retry()} />;
+  if (sessions.isLoading) return <div className="space-y-4">{timer}<LoadingState label="Loading study sessions…" /></div>;
+  if (sessions.error && !sessions.data) return <div className="space-y-4">{timer}<ErrorState error={sessions.error} onRetry={sessions.retry} /></div>;
   const items = sessions.data ?? [];
-  if (items.length === 0) return <EmptyState icon={Clock} title="No study sessions recorded yet" description="Time you spend in lessons is recorded here." />;
+  if (items.length === 0) return <div className="space-y-4">{timer}<EmptyState icon={Clock} title="No study sessions recorded yet" description="Start the timer above, or study a lesson: the time is recorded here." /></div>;
   return (
+    <div className="space-y-4">
+    {timer}
     <ul className="space-y-2">
       {items.map((s) => (
         <li key={s.id} className={`${card} p-4 flex items-center justify-between gap-3`}>
@@ -336,5 +407,6 @@ function Sessions() {
         </li>
       ))}
     </ul>
+    </div>
   );
 }

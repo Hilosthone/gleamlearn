@@ -14,15 +14,15 @@
 - **Guard** is the decorator on the handler or its controller (`JwtAuthGuard`, `AdminOnly(…)`, `AdminJwtAuthGuard`, `none` = public).
 - Paths are relative to `/api/v1`; `:p` is a path parameter.
 
-## Totals (2026-10-28)
+## Totals (2026-10-29, after batches 3–5)
 
 | | Routes | WIRED | CLIENT ONLY | FRONTEND MISSING |
 |---|---|---|---|---|
-| Learner / public | 345 | 153 | 176 | 16 |
-| Admin (incl. 36 `@AdminOnly` management routes outside `/admin`) | 162 | 25 | 31 | 106 |
-| **All** | **507** | **178** | **207** | **122** |
+| Learner / public | 342 | 197 | 129 | 16 |
+| Admin (incl. 39 `@AdminOnly` management routes outside `/admin`) | 165 | 25 | 34 | 106 |
+| **All** | **507** | **222** | **163** | **122** |
 
-Frontend client calls with no backend route: **0**.
+Frontend client calls with no backend route: **0**. The learner count fell from 345 to 342 because the question bank's create/update/delete routes are now admin-only (they were open to any learner). See `docs/INTEGRATION_REPORT.md` §3 for how the remaining learner routes are classified (duplicates, server-only, superseded, real gaps, detector limits).
 
 ### Admin — Academic Structure & Management (9: 9 CLIENT ONLY)
 
@@ -86,7 +86,7 @@ Frontend client calls with no backend route: **0**.
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/admin/auth/login` | none | WIRED | `res` | `app/onboarding/page.tsx`<br>`lib/learner-auth.ts`<br>`components/auth/registration/RegistrationWizard.tsx` +32 |
+| POST | `/admin/auth/login` | none | WIRED | `res` | `app/onboarding/page.tsx`<br>`lib/learner-auth.ts`<br>`components/auth/registration/RegistrationWizard.tsx` +35 |
 | POST | `/admin/auth/logout` | none | WIRED | `logout` | `lib/learner-auth.ts`<br>`lib/api.ts`<br>`app/admin/(console)/users/[id]/page.tsx` +2 |
 | POST | `/admin/auth/refresh` | none | FRONTEND MISSING | — | — |
 | POST | `/admin/auth/forgot-password` | none | FRONTEND MISSING | — | — |
@@ -291,6 +291,14 @@ Frontend client calls with no backend route: **0**.
 | GET | `/files` | AdminOnly(AdminPermission.CONTENT_MANAGE) | FRONTEND MISSING | — | — |
 | DELETE | `/files/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `filesApi.deleteFile` | — |
 
+### Admin — Questions Bank (3: 3 CLIENT ONLY)
+
+| Method | Path | Guard | Status | Client | Used by |
+|---|---|---|---|---|---|
+| POST | `/questions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.createQuestion` | — |
+| PATCH | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.updateQuestion` | — |
+| DELETE | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.deleteQuestion` | — |
+
 ### Admin — Quizzes System (5: 3 CLIENT ONLY, 2 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
@@ -345,23 +353,23 @@ Frontend client calls with no backend route: **0**.
 | GET | `/ai/documents/:p/live-class-stream` | JwtAuthGuard | CLIENT ONLY | `aiDocumentsApi.getLiveClassStream` | — |
 | POST | `/ai/documents/:p/export-pdf` | JwtAuthGuard | CLIENT ONLY | `aiDocumentsApi.exportPdf` | — |
 
-### Learner — AI Recommendations (6: 5 CLIENT ONLY, 1 WIRED)
+### Learner — AI Recommendations (6: 2 WIRED, 4 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/recommendations` | JwtAuthGuard | CLIENT ONLY | `recommendationsApi.getAllRecommendations` | — |
+| GET | `/recommendations` | JwtAuthGuard | WIRED | `recommendationsApi.getAllRecommendations` | `lib/next-steps.ts` |
 | GET | `/recommendations/courses` | JwtAuthGuard | WIRED | `recommendationsApi.getCourseRecommendations` | `lib/learning.ts` |
 | GET | `/recommendations/topics` | JwtAuthGuard | CLIENT ONLY | `recommendationsApi.getTopicRecommendations` | — |
 | GET | `/recommendations/quizzes` | JwtAuthGuard | CLIENT ONLY | `recommendationsApi.getQuizRecommendations` | — |
 | GET | `/recommendations/revision` | JwtAuthGuard | CLIENT ONLY | `recommendationsApi.getRevisionRecommendations` | — |
 | GET | `/recommendations/exams` | JwtAuthGuard | CLIENT ONLY | `recommendationsApi.getExamRecommendations` | — |
 
-### Learner — AI Study Planner (10: 5 WIRED, 5 CLIENT ONLY)
+### Learner — AI Study Planner (10: 6 WIRED, 4 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | POST | `/planner` | JwtAuthGuard | WIRED | `plannerApi.createPlannerItem` | `lib/planner.ts` |
-| POST | `/planner/generate` | JwtAuthGuard | CLIENT ONLY | `plannerApi.generatePlanner` | — |
+| POST | `/planner/generate` | JwtAuthGuard | WIRED | `plannerApi.generatePlanner` | `lib/planner.ts` |
 | GET | `/planner` | JwtAuthGuard | WIRED | `plannerApi.getAllPlannerSessions` | `lib/planner.ts` |
 | GET | `/planner/today` | JwtAuthGuard | CLIENT ONLY | `plannerApi.getTodayAgenda` | — |
 | GET | `/planner/week` | JwtAuthGuard | CLIENT ONLY | `plannerApi.getWeeklySchedule` | — |
@@ -409,21 +417,21 @@ Frontend client calls with no backend route: **0**.
 | GET | `/achievements/me` | AuthGuard('jwt' | WIRED | `achievementsApi.getMyAchievements` | `lib/profile.ts`<br>`lib/gamification.ts` |
 | GET | `/achievements/:p` | none | CLIENT ONLY | `achievementsApi.getAchievementById` | — |
 
-### Learner — Assessment Analytics (11: 1 FRONTEND MISSING, 10 CLIENT ONLY)
+### Learner — Assessment Analytics (11: 1 FRONTEND MISSING, 3 CLIENT ONLY, 7 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/analytics/overview` | JwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/analytics/courses` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getAggregatedCourseAnalytics` | — |
 | GET | `/analytics/courses/:p` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getCourseAnalyticsById` | — |
-| GET | `/analytics/topics` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getTopicAnalytics` | — |
-| GET | `/analytics/weak-topics` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getWeakTopics` | — |
-| GET | `/analytics/strong-topics` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getStrongTopics` | — |
-| GET | `/analytics/quiz-performance` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getQuizPerformance` | — |
-| GET | `/analytics/test-performance` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getTestPerformance` | — |
-| GET | `/analytics/exam-performance` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getExamPerformance` | — |
+| GET | `/analytics/topics` | JwtAuthGuard | WIRED | `analyticsApi.getTopicAnalytics` | `lib/exam-prep.ts` |
+| GET | `/analytics/weak-topics` | JwtAuthGuard | WIRED | `analyticsApi.getWeakTopics` | `lib/exam-prep.ts` |
+| GET | `/analytics/strong-topics` | JwtAuthGuard | WIRED | `analyticsApi.getStrongTopics` | `lib/exam-prep.ts` |
+| GET | `/analytics/quiz-performance` | JwtAuthGuard | WIRED | `analyticsApi.getQuizPerformance` | `lib/exam-prep.ts` |
+| GET | `/analytics/test-performance` | JwtAuthGuard | WIRED | `analyticsApi.getTestPerformance` | `lib/exam-prep.ts` |
+| GET | `/analytics/exam-performance` | JwtAuthGuard | WIRED | `analyticsApi.getExamPerformance` | `lib/exam-prep.ts` |
 | GET | `/analytics/time-spent` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getTimeSpentMetrics` | — |
-| GET | `/analytics/mastery` | JwtAuthGuard | CLIENT ONLY | `analyticsApi.getOverallMastery` | — |
+| GET | `/analytics/mastery` | JwtAuthGuard | WIRED | `analyticsApi.getOverallMastery` | `lib/exam-prep.ts` |
 
 ### Learner — Auth (11: 9 WIRED, 2 CLIENT ONLY)
 
@@ -448,17 +456,17 @@ Frontend client calls with no backend route: **0**.
 | GET | `/badges` | none | WIRED | `badgesApi.getAllBadges` | `lib/gamification.ts` |
 | GET | `/badges/me` | AuthGuard('jwt' | WIRED | `badgesApi.getMyBadges` | `lib/gamification.ts` |
 
-### Learner — Calendar & Schedule (7: 7 CLIENT ONLY)
+### Learner — Calendar & Schedule (7: 3 CLIENT ONLY, 4 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/calendar` | JwtAuthGuard | CLIENT ONLY | `calendarApi.getAllEvents` | — |
-| GET | `/calendar/month` | JwtAuthGuard | CLIENT ONLY | `calendarApi.getEventsByMonth` | — |
+| GET | `/calendar/month` | JwtAuthGuard | WIRED | `calendarApi.getEventsByMonth` | `lib/planner.ts` |
 | GET | `/calendar/week` | JwtAuthGuard | CLIENT ONLY | `calendarApi.getEventsByWeek` | — |
 | GET | `/calendar/day` | JwtAuthGuard | CLIENT ONLY | `calendarApi.getEventsByDay` | — |
-| POST | `/calendar/events` | JwtAuthGuard | CLIENT ONLY | `calendarApi.createEvent` | — |
-| PATCH | `/calendar/events/:p` | JwtAuthGuard | CLIENT ONLY | `calendarApi.updateEvent` | — |
-| DELETE | `/calendar/events/:p` | JwtAuthGuard | CLIENT ONLY | `calendarApi.deleteEvent` | — |
+| POST | `/calendar/events` | JwtAuthGuard | WIRED | `calendarApi.createEvent` | `lib/planner.ts` |
+| PATCH | `/calendar/events/:p` | JwtAuthGuard | WIRED | `calendarApi.updateEvent` | `lib/planner.ts` |
+| DELETE | `/calendar/events/:p` | JwtAuthGuard | WIRED | `calendarApi.deleteEvent` | `lib/planner.ts` |
 
 ### Learner — Coins & Economy (4: 2 WIRED, 2 CLIENT ONLY)
 
@@ -492,39 +500,39 @@ Frontend client calls with no backend route: **0**.
 | POST | `/courses/:p/enroll` | JwtAuthGuard | WIRED | `coursesApi.enrollInCourse` | `lib/learning.ts` |
 | DELETE | `/courses/:p/enroll` | JwtAuthGuard | WIRED | `coursesApi.unenrollFromCourse` | `lib/learning.ts` |
 
-### Learner — Examination Preparation & Past Questions (12: 11 CLIENT ONLY, 1 FRONTEND MISSING)
+### Learner — Examination Preparation & Past Questions (12: 8 WIRED, 3 CLIENT ONLY, 1 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/examinations` | JwtAuthGuard | CLIENT ONLY | `examinationBoardsApi.getAllExaminationBoards` | — |
+| GET | `/examinations` | JwtAuthGuard | WIRED | `examinationBoardsApi.getAllExaminationBoards` | `lib/exam-prep.ts` |
 | GET | `/examinations/:p` | JwtAuthGuard | CLIENT ONLY | `examinationBoardsApi.getExaminationBoardById` | — |
 | GET | `/past-questions` | JwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/past-questions/years` | JwtAuthGuard | CLIENT ONLY | `pastQuestionsApi.getPastQuestionYears` | — |
-| GET | `/past-questions/subjects` | JwtAuthGuard | CLIENT ONLY | `pastQuestionsApi.getPastQuestionSubjects` | — |
-| GET | `/past-questions/topics` | JwtAuthGuard | CLIENT ONLY | `pastQuestionsApi.getPastQuestionTopics` | — |
+| GET | `/past-questions/years` | JwtAuthGuard | WIRED | `pastQuestionsApi.getPastQuestionYears` | `lib/exam-prep.ts` |
+| GET | `/past-questions/subjects` | JwtAuthGuard | WIRED | `pastQuestionsApi.getPastQuestionSubjects` | `lib/exam-prep.ts` |
+| GET | `/past-questions/topics` | JwtAuthGuard | WIRED | `pastQuestionsApi.getPastQuestionTopics` | `lib/exam-prep.ts` |
 | GET | `/past-questions/:p` | JwtAuthGuard | CLIENT ONLY | `pastQuestionsApi.getPastQuestionById` | — |
-| POST | `/exam-prep` | JwtAuthGuard | CLIENT ONLY | `examPrepApi.createExamPrepPlan` | — |
-| GET | `/exam-prep` | JwtAuthGuard | CLIENT ONLY | `examPrepApi.getAllExamPrepPlans` | — |
+| POST | `/exam-prep` | JwtAuthGuard | WIRED | `examPrepApi.createExamPrepPlan` | `lib/exam-prep.ts` |
+| GET | `/exam-prep` | JwtAuthGuard | WIRED | `examPrepApi.getAllExamPrepPlans` | `lib/exam-prep.ts` |
 | GET | `/exam-prep/:p` | JwtAuthGuard | CLIENT ONLY | `examPrepApi.getExamPrepPlanById` | — |
-| PATCH | `/exam-prep/:p` | JwtAuthGuard | CLIENT ONLY | `examPrepApi.updateExamPrepPlan` | — |
-| DELETE | `/exam-prep/:p` | JwtAuthGuard | CLIENT ONLY | `examPrepApi.deleteExamPrepPlan` | — |
+| PATCH | `/exam-prep/:p` | JwtAuthGuard | WIRED | `examPrepApi.updateExamPrepPlan` | `lib/exam-prep.ts` |
+| DELETE | `/exam-prep/:p` | JwtAuthGuard | WIRED | `examPrepApi.deleteExamPrepPlan` | `lib/exam-prep.ts` |
 
-### Learner — Examinations System (12: 3 WIRED, 9 CLIENT ONLY)
+### Learner — Examinations System (12: 7 WIRED, 5 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/exams` | JwtAuthGuard | WIRED | `examsApi.getAllExams` | `lib/practice.ts` |
-| GET | `/exams/history` | JwtAuthGuard | CLIENT ONLY | `examsApi.getStudentExamHistory` | — |
+| GET | `/exams/history` | JwtAuthGuard | WIRED | `examsApi.getStudentExamHistory` | `lib/practice.ts` |
 | GET | `/exams/:p` | JwtAuthGuard | WIRED | `examsApi.getExamById` | `lib/practice.ts` |
 | POST | `/exams/generate` | JwtAuthGuard | CLIENT ONLY | `examsApi.generateAiExam` | — |
 | POST | `/exams/generate-from-course` | JwtAuthGuard | CLIENT ONLY | `examsApi.generateExamFromCourse` | — |
 | POST | `/exams/generate-from-document` | JwtAuthGuard | CLIENT ONLY | `examsApi.generateExamFromDocument` | — |
-| POST | `/exams/:p/start` | JwtAuthGuard | CLIENT ONLY | `examsApi.startExamAttempt` | — |
+| POST | `/exams/:p/start` | JwtAuthGuard | WIRED | `examsApi.startExamAttempt` | `lib/practice.ts` |
 | POST | `/exams/:p/submit` | JwtAuthGuard | WIRED | `examsApi.submitExamAttempt` | `lib/practice.ts` |
 | GET | `/exams/:p/result` | JwtAuthGuard | CLIENT ONLY | `examsApi.getExamResult` | — |
-| GET | `/exams/attempts/:p` | JwtAuthGuard | CLIENT ONLY | `examsApi.getExamAttemptById` | — |
+| GET | `/exams/attempts/:p` | JwtAuthGuard | WIRED | `examsApi.getExamAttemptById` | `lib/practice.ts` |
 | POST | `/exams/:p/simulate` | JwtAuthGuard | CLIENT ONLY | `examsApi.simulateExam` | — |
-| GET | `/exams/:p/readiness` | JwtAuthGuard | CLIENT ONLY | `examsApi.getExamReadiness` | — |
+| GET | `/exams/:p/readiness` | JwtAuthGuard | WIRED | `examsApi.getExamReadiness` | `lib/practice.ts` |
 
 ### Learner — File & PDF Upload (6: 6 CLIENT ONLY)
 
@@ -559,31 +567,31 @@ Frontend client calls with no backend route: **0**.
 | DELETE | `/flashcards/:p` | JwtAuthGuard | WIRED | `flashcardsApi.deleteFlashcard` | `lib/library.ts` |
 | POST | `/flashcards/:p/review` | JwtAuthGuard | WIRED | `flashcardsApi.submitReview` | `lib/library.ts` |
 
-### Learner — Leaderboards (10: 4 WIRED, 6 CLIENT ONLY)
+### Learner — Leaderboards (10: 8 WIRED, 2 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/leaderboards/global` | none | WIRED | `leaderboardsApi.getGlobalLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/country` | none | WIRED | `leaderboardsApi.getCountryLeaderboard` | `lib/gamification.ts` |
-| GET | `/leaderboards/school` | none | CLIENT ONLY | `leaderboardsApi.getSchoolLeaderboard` | — |
-| GET | `/leaderboards/university` | none | CLIENT ONLY | `leaderboardsApi.getUniversityLeaderboard` | — |
-| GET | `/leaderboards/department` | none | CLIENT ONLY | `leaderboardsApi.getDepartmentLeaderboard` | — |
+| GET | `/leaderboards/school` | none | WIRED | `leaderboardsApi.getSchoolLeaderboard` | `lib/gamification.ts` |
+| GET | `/leaderboards/university` | none | WIRED | `leaderboardsApi.getUniversityLeaderboard` | `lib/gamification.ts` |
+| GET | `/leaderboards/department` | none | WIRED | `leaderboardsApi.getDepartmentLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/course` | none | CLIENT ONLY | `leaderboardsApi.getCourseLeaderboard` | — |
 | GET | `/leaderboards/friends` | JwtAuthGuard | CLIENT ONLY | `leaderboardsApi.getFriendsLeaderboard` | — |
 | GET | `/leaderboards/weekly` | none | WIRED | `leaderboardsApi.getWeeklyLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/monthly` | none | WIRED | `leaderboardsApi.getMonthlyLeaderboard` | `lib/gamification.ts` |
-| GET | `/leaderboards/me` | JwtAuthGuard | CLIENT ONLY | `leaderboardsApi.getMyRank` | — |
+| GET | `/leaderboards/me` | JwtAuthGuard | WIRED | `leaderboardsApi.getMyRank` | `lib/gamification.ts` |
 
-### Learner — Learning Progress & Mastery (8: 8 CLIENT ONLY)
+### Learner — Learning Progress & Mastery (8: 2 WIRED, 6 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/progress` | JwtAuthGuard | CLIENT ONLY | `progressApi.getOverallProgress` | — |
+| GET | `/progress` | JwtAuthGuard | WIRED | `progressApi.getOverallProgress` | `lib/gamification.ts` |
 | GET | `/progress/courses/:p` | JwtAuthGuard | CLIENT ONLY | `progressApi.getCourseProgressById` | — |
 | GET | `/progress/topics/:p` | JwtAuthGuard | CLIENT ONLY | `progressApi.getTopicProgressById` | — |
 | POST | `/progress/update` | JwtAuthGuard | CLIENT ONLY | `progressApi.updateProgress` | — |
 | GET | `/progress/history` | JwtAuthGuard | CLIENT ONLY | `progressApi.getProgressHistory` | — |
-| GET | `/mastery` | JwtAuthGuard | CLIENT ONLY | `masteryApi.getOverallMasteryMetrics` | — |
+| GET | `/mastery` | JwtAuthGuard | WIRED | `masteryApi.getOverallMasteryMetrics` | `lib/gamification.ts` |
 | GET | `/mastery/courses/:p` | JwtAuthGuard | CLIENT ONLY | `masteryApi.getCourseMasteryById` | — |
 | GET | `/mastery/topics/:p` | JwtAuthGuard | CLIENT ONLY | `masteryApi.getTopicMasteryById` | — |
 
@@ -598,12 +606,12 @@ Frontend client calls with no backend route: **0**.
 | POST | `/learning/resources/:p/complete` | JwtAuthGuard | WIRED | `learningApi.completeResource` | `lib/self-learning.ts` |
 | DELETE | `/learning/resources/:p` | JwtAuthGuard | WIRED | `learningApi.deleteResource` | `lib/self-learning.ts` |
 
-### Learner — Levels & Ranks (2: 2 CLIENT ONLY)
+### Learner — Levels & Ranks (2: 2 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/levels` | none | CLIENT ONLY | `levelsApi.getAllLevels` | — |
-| GET | `/levels/me` | AuthGuard('jwt' | CLIENT ONLY | `levelsApi.getMyLevel` | — |
+| GET | `/levels` | none | WIRED | `levelsApi.getAllLevels` | `lib/gamification.ts` |
+| GET | `/levels/me` | AuthGuard('jwt' | WIRED | `levelsApi.getMyLevel` | `lib/gamification.ts` |
 
 ### Learner — Notes & Learning Materials (5: 4 WIRED, 1 CLIENT ONLY)
 
@@ -667,31 +675,28 @@ Frontend client calls with no backend route: **0**.
 | PATCH | `/personal-courses/:p/modules/:p` | JwtAuthGuard | WIRED | `personalCoursesApi.updateModule` | `lib/learner-content.ts` |
 | DELETE | `/personal-courses/:p/modules/:p` | JwtAuthGuard | WIRED | `personalCoursesApi.removeModule` | `lib/learner-content.ts` |
 
-### Learner — Questions Bank (5: 4 CLIENT ONLY, 1 FRONTEND MISSING)
+### Learner — Questions Bank (2: 1 FRONTEND MISSING, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/questions` | JwtAuthGuard | CLIENT ONLY | `questionsApi.createQuestion` | — |
 | GET | `/questions` | JwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/questions/:p` | JwtAuthGuard | CLIENT ONLY | `questionsApi.getQuestionById` | — |
-| PATCH | `/questions/:p` | JwtAuthGuard | CLIENT ONLY | `questionsApi.updateQuestion` | — |
-| DELETE | `/questions/:p` | JwtAuthGuard | CLIENT ONLY | `questionsApi.deleteQuestion` | — |
 
-### Learner — Quizzes System (11: 4 WIRED, 7 CLIENT ONLY)
+### Learner — Quizzes System (11: 7 WIRED, 4 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/quizzes` | JwtAuthGuard | WIRED | `quizzesApi.getAllQuizzes` | `lib/practice.ts` |
-| GET | `/quizzes/attempts` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.getUserAttempts` | — |
+| GET | `/quizzes/attempts` | JwtAuthGuard | WIRED | `quizzesApi.getUserAttempts` | `lib/practice.ts` |
 | GET | `/quizzes/:p` | JwtAuthGuard | WIRED | `quizzesApi.getQuizById` | `lib/practice.ts` |
 | POST | `/quizzes/generate` | JwtAuthGuard | WIRED | `quizzesApi.generateAiQuiz` | `lib/practice.ts` |
 | POST | `/quizzes/generate-from-course` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.generateQuizFromCourse` | — |
 | POST | `/quizzes/generate-from-document` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.generateQuizFromDocument` | — |
 | POST | `/quizzes/generate-from-topic` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.generateQuizFromTopic` | — |
-| POST | `/quizzes/:p/start` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.startQuizAttempt` | — |
+| POST | `/quizzes/:p/start` | JwtAuthGuard | WIRED | `quizzesApi.startQuizAttempt` | `lib/practice.ts` |
 | POST | `/quizzes/:p/submit` | JwtAuthGuard | WIRED | `quizzesApi.submitQuizAttempt` | `lib/practice.ts` |
 | GET | `/quizzes/:p/results` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.getQuizResults` | — |
-| GET | `/quizzes/attempts/:p` | JwtAuthGuard | CLIENT ONLY | `quizzesApi.getAttemptById` | — |
+| GET | `/quizzes/attempts/:p` | JwtAuthGuard | WIRED | `quizzesApi.getAttemptById` | `lib/practice.ts` |
 
 ### Learner — Rate Limiting & Protection (1: 1 FRONTEND MISSING)
 
@@ -760,15 +765,15 @@ Frontend client calls with no backend route: **0**.
 | POST | `/goals/:p/complete` | JwtAuthGuard | WIRED | `goalsApi.completeGoal` | `lib/planner.ts` |
 | GET | `/goals/:p/progress` | JwtAuthGuard | CLIENT ONLY | `goalsApi.getGoalProgress` | — |
 
-### Learner — Study Sessions (8: 6 CLIENT ONLY, 2 WIRED)
+### Learner — Study Sessions (8: 7 WIRED, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/study-sessions/start` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.startStudySession` | — |
-| POST | `/study-sessions/:p/pause` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.pauseStudySession` | — |
-| POST | `/study-sessions/:p/resume` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.resumeStudySession` | — |
-| POST | `/study-sessions/:p/complete` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.completeStudySession` | — |
-| GET | `/study-sessions` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.getAllStudySessions` | — |
+| POST | `/study-sessions/start` | JwtAuthGuard | WIRED | `studySessionsApi.startStudySession` | `lib/planner.ts` |
+| POST | `/study-sessions/:p/pause` | JwtAuthGuard | WIRED | `studySessionsApi.pauseStudySession` | `lib/planner.ts` |
+| POST | `/study-sessions/:p/resume` | JwtAuthGuard | WIRED | `studySessionsApi.resumeStudySession` | `lib/planner.ts` |
+| POST | `/study-sessions/:p/complete` | JwtAuthGuard | WIRED | `studySessionsApi.completeStudySession` | `lib/planner.ts` |
+| GET | `/study-sessions` | JwtAuthGuard | WIRED | `studySessionsApi.getAllStudySessions` | `lib/planner.ts` |
 | GET | `/study-sessions/today` | JwtAuthGuard | CLIENT ONLY | `studySessionsApi.getTodayStudySessions` | — |
 | GET | `/study-sessions/history` | JwtAuthGuard | WIRED | `studySessionsApi.getStudySessionHistory` | `lib/gamification.ts` |
 | GET | `/study-sessions/stats` | JwtAuthGuard | WIRED | `studySessionsApi.getStudySessionStats` | `lib/learning.ts`<br>`lib/gamification.ts` |
@@ -787,27 +792,27 @@ Frontend client calls with no backend route: **0**.
 | POST | `/payments/verify` | JwtAuthGuard | CLIENT ONLY | `subscriptionsPaymentsApi.verifyPayment` | — |
 | POST | `/payments/webhook` | none | CLIENT ONLY | `subscriptionsPaymentsApi.handlePaymentWebhook` | — |
 
-### Learner — Tests & Assessments System (10: 3 WIRED, 7 CLIENT ONLY)
+### Learner — Tests & Assessments System (10: 6 WIRED, 4 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/tests` | JwtAuthGuard | WIRED | `testsApi.getAllTests` | `lib/practice.ts` |
-| GET | `/tests/attempts` | JwtAuthGuard | CLIENT ONLY | `testsApi.getUserTestAttempts` | — |
+| GET | `/tests/attempts` | JwtAuthGuard | WIRED | `testsApi.getUserTestAttempts` | `lib/practice.ts` |
 | GET | `/tests/:p` | JwtAuthGuard | WIRED | `testsApi.getTestById` | `lib/practice.ts` |
 | POST | `/tests/generate` | JwtAuthGuard | CLIENT ONLY | `testsApi.generateAiTest` | — |
 | POST | `/tests/generate-from-course` | JwtAuthGuard | CLIENT ONLY | `testsApi.generateTestFromCourse` | — |
 | POST | `/tests/generate-from-document` | JwtAuthGuard | CLIENT ONLY | `testsApi.generateTestFromDocument` | — |
-| POST | `/tests/:p/start` | JwtAuthGuard | CLIENT ONLY | `testsApi.startTestAttempt` | — |
+| POST | `/tests/:p/start` | JwtAuthGuard | WIRED | `testsApi.startTestAttempt` | `lib/practice.ts` |
 | POST | `/tests/:p/submit` | JwtAuthGuard | WIRED | `testsApi.submitTestAttempt` | `lib/practice.ts` |
 | GET | `/tests/:p/results` | JwtAuthGuard | CLIENT ONLY | `testsApi.getTestResults` | — |
-| GET | `/tests/attempts/:p` | JwtAuthGuard | CLIENT ONLY | `testsApi.getTestAttemptById` | — |
+| GET | `/tests/attempts/:p` | JwtAuthGuard | WIRED | `testsApi.getTestAttemptById` | `lib/practice.ts` |
 
 ### Learner — Uploaded materials (8: 8 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/materials` | JwtAuthGuard | WIRED | `materialsApi.list` | `lib/learner-content.ts` |
-| POST | `/materials` | JwtAuthGuard | WIRED | `form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +25 |
+| POST | `/materials` | JwtAuthGuard | WIRED | `form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +27 |
 | GET | `/materials/:p/access` | JwtAuthGuard | WIRED | `materialsApi.access` | `lib/learner-content.ts` |
 | DELETE | `/materials/:p` | JwtAuthGuard | WIRED | `materialsApi.remove` | `lib/learner-content.ts` |
 | POST | `/materials/text` | JwtAuthGuard | WIRED | `learningApi.addTextMaterial` | `lib/self-learning.ts` |
@@ -847,7 +852,7 @@ Frontend client calls with no backend route: **0**.
 |---|---|---|---|---|---|
 | GET | `/users/me/avatar` | JwtAuthGuard | WIRED | `avatarApi.get` | `lib/avatar.ts` |
 | PUT | `/users/me/avatar` | JwtAuthGuard | WIRED | `avatarApi.choosePreset` | `lib/avatar.ts` |
-| POST | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.uploadProfilePicture`<br>`form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +25 |
+| POST | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.uploadProfilePicture`<br>`form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +27 |
 | DELETE | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.removeProfilePicture`<br>`avatarApi.reset` | `lib/avatar.ts` |
 
 ### Learner — Voice AI (3: 3 CLIENT ONLY)
