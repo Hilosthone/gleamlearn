@@ -23,6 +23,7 @@ import { adminDashboardApi, type AdminVerifiedCounts } from '@/lib/admin-api';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { QueryState, LoadingState } from '@/components/ui/states';
 import { ADMIN_LOGIN_PATH, useAdminSession } from '@/components/admin/AdminSessionProvider';
+import { HealthAndActivity, NeedsAttention, QuickAccess } from '@/components/admin/OverviewExtras';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -88,7 +89,8 @@ function VerifiedCounts() {
 
 /**
  * Admin overview. Figures come only from GET /api/v1/admin/dashboard/counts (exact COUNT/SUM queries).
- * The older /admin/dashboard and /admin/analytics endpoints return placeholder numbers and are not displayed.
+ * Pending reviews, health and recent admin actions come from their own list endpoints. The detailed analytics,
+ * engagement and revenue endpoints answer 501 (they used to return invented figures).
  */
 export default function AdminOverviewPage() {
   const { admin, can } = useAdminSession();
@@ -102,6 +104,8 @@ export default function AdminOverviewPage() {
         </p>
       </div>
 
+      <NeedsAttention />
+
       {can('analytics.view') ? (
         <VerifiedCounts />
       ) : (
@@ -110,13 +114,18 @@ export default function AdminOverviewPage() {
         </div>
       )}
 
+      <HealthAndActivity />
+
+      <QuickAccess />
+
       <div className={`${card} p-5 flex gap-3`}>
         <Info className="w-5 h-5 shrink-0 text-gray-400 mt-0.5" aria-hidden="true" />
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
           <p className="font-semibold text-gray-700 dark:text-gray-300">What is not shown</p>
           <p>
             Active users, engagement, completion rates, revenue and the detailed analytics reports are not calculated by the
-            backend yet (it returns fixed placeholder values), so they are left out rather than shown as real numbers.
+            backend yet. Those endpoints answer &ldquo;not available&rdquo; (they used to return invented figures), so they are left out
+            rather than shown as real numbers.
           </p>
           {can('users.view') && (
             <p>

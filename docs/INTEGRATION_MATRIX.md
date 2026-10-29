@@ -14,29 +14,30 @@
 - **Guard** is the decorator on the handler or its controller (`JwtAuthGuard`, `AdminOnly(…)`, `AdminJwtAuthGuard`, `none` = public).
 - Paths are relative to `/api/v1`; `:p` is a path parameter.
 
-## Totals (2026-10-29, after batches 3–5)
+## Totals (2026-10-29, after the admin console batches A–I)
 
 | | Routes | WIRED | CLIENT ONLY | FRONTEND MISSING |
 |---|---|---|---|---|
-| Learner / public | 342 | 197 | 129 | 16 |
-| Admin (incl. 39 `@AdminOnly` management routes outside `/admin`) | 165 | 25 | 34 | 106 |
-| **All** | **507** | **222** | **163** | **122** |
+| Learner / public | 342 | 206 | 120 | 16 |
+| Admin (incl. `@AdminOnly` management routes outside `/admin`) | 169 | 91 | 22 | 56 |
+| **All** | **511** | **297** | **142** | **72** |
 
-Frontend client calls with no backend route: **0**. The learner count fell from 345 to 342 because the question bank's create/update/delete routes are now admin-only (they were open to any learner). See `docs/INTEGRATION_REPORT.md` §3 for how the remaining learner routes are classified (duplicates, server-only, superseded, real gaps, detector limits).
+Raw detector counts. Many admin routes are called with paths built at runtime, which the detector cannot see; `docs/ADMIN_INTEGRATION_MATRIX.md` classifies every admin route. Two routes were added for the console: `GET /admin/access` and `GET /questions/manage/all`.
 
-### Admin — Academic Structure & Management (9: 9 CLIENT ONLY)
+### Admin — Academic Structure & Management (10: 10 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/institutions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.createInstitution` | — |
-| PATCH | `/institutions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.updateInstitution` | — |
-| DELETE | `/institutions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.deleteInstitution` | — |
-| POST | `/faculties` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.createFaculty` | — |
-| PATCH | `/faculties/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.updateFaculty` | — |
-| DELETE | `/faculties/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.deleteFaculty` | — |
-| POST | `/departments` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.createDepartment` | — |
-| PATCH | `/departments/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.updateDepartment` | — |
-| DELETE | `/departments/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `academicApi.deleteDepartment` | — |
+| GET | `/admin/institutions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.list` | `app/admin/(console)/academic/page.tsx` |
+| POST | `/institutions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.createInstitution`<br>`academicApi.createInstitution` | `app/admin/(console)/academic/page.tsx` |
+| PATCH | `/institutions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.updateInstitution`<br>`academicApi.updateInstitution` | `app/admin/(console)/academic/page.tsx` |
+| DELETE | `/institutions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.deleteInstitution`<br>`academicApi.deleteInstitution` | `app/admin/(console)/academic/page.tsx` |
+| POST | `/faculties` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.createFaculty`<br>`academicApi.createFaculty` | `app/admin/(console)/academic/page.tsx` |
+| PATCH | `/faculties/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.updateFaculty`<br>`academicApi.updateFaculty` | `app/admin/(console)/academic/page.tsx` |
+| DELETE | `/faculties/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.deleteFaculty`<br>`academicApi.deleteFaculty` | `app/admin/(console)/academic/page.tsx` |
+| POST | `/departments` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.createDepartment`<br>`academicApi.createDepartment` | `app/admin/(console)/academic/page.tsx` |
+| PATCH | `/departments/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.updateDepartment`<br>`academicApi.updateDepartment` | `app/admin/(console)/academic/page.tsx` |
+| DELETE | `/departments/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminAcademicApi.deleteDepartment`<br>`academicApi.deleteDepartment` | `app/admin/(console)/academic/page.tsx` |
 
 ### Admin — Admin - Learning Content (11: 11 WIRED)
 
@@ -54,39 +55,39 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | PATCH | `/admin/content/lessons/:p` | AdminJwtAuthGuard | WIRED | `adminContentApi.updateLesson` | `app/admin/(console)/content/[id]/page.tsx` |
 | DELETE | `/admin/content/lessons/:p` | AdminJwtAuthGuard | WIRED | `adminContentApi.deleteLesson` | `app/admin/(console)/content/[id]/page.tsx` |
 
-### Admin — Admin AI Content Moderation (5: 4 WIRED, 1 FRONTEND MISSING)
+### Admin — Admin AI Content Moderation (5: 5 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/ai/generated-content` | AdminJwtAuthGuard | WIRED | `adminModerationApi.listAiContent` | `app/admin/(console)/moderation/page.tsx` |
-| GET | `/admin/ai/generated-content/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/ai/generated-content` | AdminJwtAuthGuard | WIRED | `adminModerationApi.listAiContent` | `components/admin/OverviewExtras.tsx`<br>`app/admin/(console)/moderation/page.tsx` |
+| GET | `/admin/ai/generated-content/:p` | AdminJwtAuthGuard | WIRED | `adminModerationDetailApi.aiContent` | `app/admin/(console)/moderation/page.tsx` |
 | PATCH | `/admin/ai/generated-content/:p/approve` | AdminJwtAuthGuard | WIRED | `adminModerationApi.approveAiContent` | `app/admin/(console)/moderation/page.tsx` |
 | PATCH | `/admin/ai/generated-content/:p/reject` | AdminJwtAuthGuard | WIRED | `adminModerationApi.rejectAiContent` | `app/admin/(console)/moderation/page.tsx` |
 | DELETE | `/admin/ai/generated-content/:p` | AdminJwtAuthGuard | WIRED | `adminModerationApi.deleteAiContent` | `app/admin/(console)/moderation/page.tsx` |
 
-### Admin — Admin Activity Monitoring (6: 6 FRONTEND MISSING)
+### Admin — Admin Activity Monitoring (6: 1 WIRED, 5 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/activity` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/activity` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.activity` | `app/admin/(console)/security/page.tsx` |
 | GET | `/admin/activity/users` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/activity/learning` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/activity/assessments` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/activity/ai` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/activity/payments` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin Audit Logs (2: 2 FRONTEND MISSING)
+### Admin — Admin Audit Logs (2: 2 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/audit-logs` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/audit-logs/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/audit-logs` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.auditLogs` | `app/admin/(console)/security/page.tsx`<br>`components/admin/OverviewExtras.tsx`<br>`app/admin/(console)/gamification/page.tsx` |
+| GET | `/admin/audit-logs/:p` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.auditLog` | `app/admin/(console)/security/page.tsx` |
 
 ### Admin — Admin Authentication (6: 2 WIRED, 3 FRONTEND MISSING, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/admin/auth/login` | none | WIRED | `res` | `app/onboarding/page.tsx`<br>`lib/learner-auth.ts`<br>`components/auth/registration/RegistrationWizard.tsx` +35 |
+| POST | `/admin/auth/login` | none | WIRED | `res` | `app/onboarding/page.tsx`<br>`lib/learner-auth.ts`<br>`components/auth/registration/RegistrationWizard.tsx` +41 |
 | POST | `/admin/auth/logout` | none | WIRED | `logout` | `lib/learner-auth.ts`<br>`lib/api.ts`<br>`app/admin/(console)/users/[id]/page.tsx` +2 |
 | POST | `/admin/auth/refresh` | none | FRONTEND MISSING | — | — |
 | POST | `/admin/auth/forgot-password` | none | FRONTEND MISSING | — | — |
@@ -105,52 +106,52 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | PATCH | `/admin/courses/:p/publish` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/courses/:p/unpublish` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin Dashboard (7: 1 WIRED, 1 CLIENT ONLY, 5 FRONTEND MISSING)
+### Admin — Admin Dashboard (7: 6 WIRED, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/admin/dashboard/counts` | AdminJwtAuthGuard | WIRED | `adminDashboardApi.counts` | `app/admin/(console)/page.tsx` |
 | GET | `/admin/dashboard` | AdminJwtAuthGuard | CLIENT ONLY | `adminDashboardApi.overview` | — |
-| GET | `/admin/dashboard/users` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/dashboard/activity` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/dashboard/revenue` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/dashboard/learning` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/dashboard/engagement` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/dashboard/users` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.dashboardSection` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/dashboard/activity` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.dashboardSection` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/dashboard/revenue` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.dashboardSection` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/dashboard/learning` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.dashboardSection` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/dashboard/engagement` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.dashboardSection` | `app/admin/(console)/analytics/page.tsx` |
 
-### Admin — Admin Gamification Management (6: 6 FRONTEND MISSING)
-
-| Method | Path | Guard | Status | Client | Used by |
-|---|---|---|---|---|---|
-| GET | `/admin/gamification/xp` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/gamification/coins` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/gamification/streaks` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/gamification/leaderboards` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/users/:p/xp` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/users/:p/coins` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-
-### Admin — Admin Notifications (4: 4 FRONTEND MISSING)
+### Admin — Admin Gamification Management (6: 6 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/admin/notifications` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/notifications/broadcast` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/notifications` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| DELETE | `/admin/notifications/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/gamification/xp` | AdminJwtAuthGuard | WIRED | `adminGamificationApi.xp` | `app/admin/(console)/gamification/page.tsx` |
+| GET | `/admin/gamification/coins` | AdminJwtAuthGuard | WIRED | `adminGamificationApi.coins` | `app/admin/(console)/gamification/page.tsx` |
+| GET | `/admin/gamification/streaks` | AdminJwtAuthGuard | WIRED | `adminGamificationApi.streaks` | `app/admin/(console)/gamification/page.tsx` |
+| GET | `/admin/gamification/leaderboards` | AdminJwtAuthGuard | WIRED | `adminGamificationApi.leaderboard` | `app/admin/(console)/gamification/page.tsx` |
+| POST | `/admin/users/:p/xp` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.adjust` | `components/admin/UserExtras.tsx` |
+| POST | `/admin/users/:p/coins` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.adjust` | `components/admin/UserExtras.tsx` |
 
-### Admin — Admin Performance Analytics (10: 10 FRONTEND MISSING)
+### Admin — Admin Notifications (4: 4 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/analytics/overview` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/students` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/courses` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/subjects` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/exams` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/quizzes` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/tests` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/learning` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/retention` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/analytics/streaks` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| POST | `/admin/notifications` | AdminJwtAuthGuard | WIRED | `adminNotificationsApi.sendToUser` | `components/admin/UserExtras.tsx`<br>`app/admin/(console)/notifications/page.tsx` |
+| POST | `/admin/notifications/broadcast` | AdminJwtAuthGuard | WIRED | `adminNotificationsApi.broadcast` | `app/admin/(console)/notifications/page.tsx` |
+| GET | `/admin/notifications` | AdminJwtAuthGuard | WIRED | `adminNotificationsApi.history` | `app/admin/(console)/notifications/page.tsx` |
+| DELETE | `/admin/notifications/:p` | AdminJwtAuthGuard | WIRED | `adminNotificationsApi.removeRecord` | `app/admin/(console)/notifications/page.tsx` |
+
+### Admin — Admin Performance Analytics (10: 10 WIRED)
+
+| Method | Path | Guard | Status | Client | Used by |
+|---|---|---|---|---|---|
+| GET | `/admin/analytics/overview` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/students` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/courses` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/subjects` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/exams` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/quizzes` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/tests` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/learning` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/retention` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
+| GET | `/admin/analytics/streaks` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.analytics` | `app/admin/(console)/analytics/page.tsx` |
 
 ### Admin — Admin Question Management (7: 7 FRONTEND MISSING)
 
@@ -164,32 +165,34 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | PATCH | `/admin/questions/:p/approve` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/questions/:p/reject` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin Reports Management (5: 3 WIRED, 2 FRONTEND MISSING)
+### Admin — Admin Reports Management (6: 6 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/reports` | AdminJwtAuthGuard | WIRED | `adminModerationApi.listReports` | `app/admin/(console)/moderation/page.tsx` |
-| GET | `/admin/reports/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| PATCH | `/admin/reports/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/feedback` | AdminJwtAuthGuard | WIRED | `adminFeedbackApi.list` | `app/admin/(console)/moderation/page.tsx` |
+| GET | `/admin/reports` | AdminJwtAuthGuard | WIRED | `adminModerationApi.listReports` | `app/admin/(console)/question-bank/page.tsx`<br>`components/admin/OverviewExtras.tsx`<br>`app/admin/(console)/moderation/page.tsx` |
+| GET | `/admin/reports/:p` | AdminJwtAuthGuard | WIRED | `adminModerationDetailApi.report` | `app/admin/(console)/moderation/page.tsx` |
+| PATCH | `/admin/reports/:p` | AdminJwtAuthGuard | WIRED | `adminModerationDetailApi.updateReport` | `app/admin/(console)/moderation/page.tsx` |
 | PATCH | `/admin/reports/:p/resolve` | AdminJwtAuthGuard | WIRED | `adminModerationApi.resolveReport` | `app/admin/(console)/moderation/page.tsx` |
 | PATCH | `/admin/reports/:p/reject` | AdminJwtAuthGuard | WIRED | `adminModerationApi.rejectReport` | `app/admin/(console)/moderation/page.tsx` |
 
-### Admin — Admin Revenue & Finance (7: 7 FRONTEND MISSING)
+### Admin — Admin Revenue & Finance (7: 5 WIRED, 2 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/finance/overview` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/finance/revenue` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/finance/transactions` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/finance/subscriptions` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/finance/refunds` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/finance/overview` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.finance` | `app/admin/(console)/finance/page.tsx` |
+| GET | `/admin/finance/revenue` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.finance` | `app/admin/(console)/finance/page.tsx` |
+| GET | `/admin/finance/transactions` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.finance` | `app/admin/(console)/finance/page.tsx` |
+| GET | `/admin/finance/subscriptions` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.finance` | `app/admin/(console)/finance/page.tsx` |
+| GET | `/admin/finance/refunds` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.finance` | `app/admin/(console)/finance/page.tsx` |
 | GET | `/admin/finance/revenue/daily` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/finance/revenue/monthly` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin Roles & Permissions (8: 8 FRONTEND MISSING)
+### Admin — Admin Roles & Permissions (9: 1 WIRED, 8 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
+| GET | `/admin/access` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.access` | `app/admin/(console)/security/page.tsx` |
 | GET | `/admin/roles` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | POST | `/admin/roles` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/roles/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
@@ -199,21 +202,21 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | POST | `/admin/roles/:p/permissions` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | DELETE | `/admin/roles/:p/permissions` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin Security & Abuse Management (5: 5 FRONTEND MISSING)
+### Admin — Admin Security & Abuse Management (5: 5 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/security/events` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/security/suspicious-users` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/users/:p/restrict` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/users/:p/unrestrict` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| POST | `/admin/users/:p/force-logout` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/security/events` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.events` | `app/admin/(console)/security/page.tsx` |
+| GET | `/admin/security/suspicious-users` | AdminJwtAuthGuard | WIRED | `adminSecurityApi.restrictedUsers` | `app/admin/(console)/security/page.tsx`<br>`components/admin/OverviewExtras.tsx` |
+| POST | `/admin/users/:p/restrict` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.adjust` | `components/admin/UserExtras.tsx` |
+| POST | `/admin/users/:p/unrestrict` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.adjust` | `components/admin/UserExtras.tsx` |
+| POST | `/admin/users/:p/force-logout` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.adjust` | `components/admin/UserExtras.tsx` |
 
-### Admin — Admin Subscription Management (5: 5 FRONTEND MISSING)
+### Admin — Admin Subscription Management (5: 1 WIRED, 4 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/subscriptions` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/subscriptions` | AdminJwtAuthGuard | WIRED | `adminInsightsApi.subscriptions` | `app/admin/(console)/finance/page.tsx` |
 | GET | `/admin/subscriptions/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/subscriptions/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | POST | `/admin/subscriptions/:p/cancel` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
@@ -226,17 +229,17 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/admin/settings` | AdminJwtAuthGuard | WIRED | `adminSettingsApi.get` | `app/admin/(console)/settings/page.tsx` |
 | PATCH | `/admin/settings` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
-### Admin — Admin System Monitoring (5: 5 FRONTEND MISSING)
+### Admin — Admin System Monitoring (5: 5 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/admin/system/health` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/system/queues` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/system/storage` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/system/ai` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/system/errors` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/system/health` | AdminJwtAuthGuard | WIRED | `adminSystemApi.health` | `app/admin/(console)/system/page.tsx`<br>`components/admin/OverviewExtras.tsx` |
+| GET | `/admin/system/queues` | AdminJwtAuthGuard | WIRED | `adminSystemApi.metric` | `app/admin/(console)/system/page.tsx` |
+| GET | `/admin/system/storage` | AdminJwtAuthGuard | WIRED | `adminSystemApi.metric` | `app/admin/(console)/system/page.tsx` |
+| GET | `/admin/system/ai` | AdminJwtAuthGuard | WIRED | `adminSystemApi.metric` | `app/admin/(console)/system/page.tsx` |
+| GET | `/admin/system/errors` | AdminJwtAuthGuard | WIRED | `adminSystemApi.metric` | `app/admin/(console)/system/page.tsx` |
 
-### Admin — Admin User Management (14: 3 WIRED, 11 FRONTEND MISSING)
+### Admin — Admin User Management (14: 6 WIRED, 8 FRONTEND MISSING)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
@@ -244,14 +247,14 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/admin/users/:p` | AdminJwtAuthGuard | WIRED | `adminUsersApi.get` | `app/admin/(console)/users/[id]/page.tsx` |
 | GET | `/admin/users/:p/profile` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | GET | `/admin/users/:p/activity` | AdminJwtAuthGuard | WIRED | `adminUsersApi.activity` | `app/admin/(console)/users/[id]/page.tsx` |
-| GET | `/admin/users/:p/progress` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| GET | `/admin/users/:p/analytics` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| GET | `/admin/users/:p/progress` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.progress` | `components/admin/UserExtras.tsx` |
+| GET | `/admin/users/:p/analytics` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.analytics` | `components/admin/UserExtras.tsx` |
 | PATCH | `/admin/users/:p/suspend` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/users/:p/unsuspend` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/users/:p/freeze` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/users/:p/unfreeze` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | DELETE | `/admin/users/:p` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
-| PATCH | `/admin/users/:p/reset-password` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
+| PATCH | `/admin/users/:p/reset-password` | AdminJwtAuthGuard | WIRED | `adminUserInsightsApi.resetPassword` | `components/admin/UserExtras.tsx` |
 | PATCH | `/admin/users/:p/verify` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 | PATCH | `/admin/users/:p/unverify` | AdminJwtAuthGuard | FRONTEND MISSING | — | — |
 
@@ -291,13 +294,14 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/files` | AdminOnly(AdminPermission.CONTENT_MANAGE) | FRONTEND MISSING | — | — |
 | DELETE | `/files/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `filesApi.deleteFile` | — |
 
-### Admin — Questions Bank (3: 3 CLIENT ONLY)
+### Admin — Questions Bank (4: 4 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| POST | `/questions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.createQuestion` | — |
-| PATCH | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.updateQuestion` | — |
-| DELETE | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | CLIENT ONLY | `questionsApi.deleteQuestion` | — |
+| POST | `/questions` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminQuestionBankApi.create`<br>`questionsApi.createQuestion` | `app/admin/(console)/question-bank/page.tsx` |
+| GET | `/questions/manage/all` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminQuestionBankApi.list` | `app/admin/(console)/question-bank/page.tsx` |
+| PATCH | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminQuestionBankApi.update`<br>`questionsApi.updateQuestion` | `app/admin/(console)/question-bank/page.tsx` |
+| DELETE | `/questions/:p` | AdminOnly(AdminPermission.CONTENT_MANAGE) | WIRED | `adminQuestionBankApi.remove`<br>`questionsApi.deleteQuestion` | `app/admin/(console)/question-bank/page.tsx` |
 
 ### Admin — Quizzes System (5: 3 CLIENT ONLY, 2 FRONTEND MISSING)
 
@@ -395,17 +399,17 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | POST | `/ai-tutor/generate-diagram` | JwtAuthGuard | WIRED | `aiTutorApi.generateDiagram` | `lib/ai.ts` |
 | POST | `/ai-tutor/drawing-instructions` | JwtAuthGuard | CLIENT ONLY | `aiTutorApi.getDrawingInstructions` | — |
 
-### Learner — Academic Structure & Levels (1: 1 CLIENT ONLY)
+### Learner — Academic Structure & Levels (1: 1 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/academic-levels` | none | CLIENT ONLY | `academicApi.getAcademicLevels` | — |
+| GET | `/academic-levels` | none | WIRED | `adminAcademicApi.levels`<br>`academicApi.getAcademicLevels` | `app/admin/(console)/academic/page.tsx`<br>`lib/academic-directory.ts` |
 
-### Learner — Academic Structure & Management (3: 3 CLIENT ONLY)
+### Learner — Academic Structure & Management (3: 1 WIRED, 2 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/institutions` | JwtAuthGuard | CLIENT ONLY | `academicApi.getInstitutions` | — |
+| GET | `/institutions` | JwtAuthGuard | WIRED | `academicApi.getInstitutions` | `lib/academic-directory.ts` |
 | GET | `/faculties` | JwtAuthGuard | CLIENT ONLY | `academicApi.getFaculties` | — |
 | GET | `/departments` | JwtAuthGuard | CLIENT ONLY | `academicApi.getDepartments` | — |
 
@@ -545,17 +549,17 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | POST | `/files/:p/process` | JwtAuthGuard | CLIENT ONLY | `filesApi.processFile` | — |
 | POST | `/files/:p/reprocess` | JwtAuthGuard | CLIENT ONLY | `filesApi.reprocessFile` | — |
 
-### Learner — Flashcard Decks (5: 4 WIRED, 1 CLIENT ONLY)
+### Learner — Flashcard Decks (5: 5 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | POST | `/flashcard-decks` | JwtAuthGuard | WIRED | `flashcardDecksApi.createDeck` | `lib/library.ts` |
 | GET | `/flashcard-decks` | JwtAuthGuard | WIRED | `flashcardDecksApi.getAllDecks` | `lib/library.ts` |
 | GET | `/flashcard-decks/:p` | JwtAuthGuard | WIRED | `flashcardDecksApi.getDeckById` | `lib/library.ts` |
-| PATCH | `/flashcard-decks/:p` | JwtAuthGuard | CLIENT ONLY | `flashcardDecksApi.updateDeck` | — |
+| PATCH | `/flashcard-decks/:p` | JwtAuthGuard | WIRED | `flashcardDecksApi.updateDeck` | `lib/library.ts` |
 | DELETE | `/flashcard-decks/:p` | JwtAuthGuard | WIRED | `flashcardDecksApi.deleteDeck` | `lib/library.ts` |
 
-### Learner — Flashcards (7: 4 WIRED, 3 CLIENT ONLY)
+### Learner — Flashcards (7: 5 WIRED, 2 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
@@ -563,11 +567,11 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/flashcards` | JwtAuthGuard | CLIENT ONLY | `flashcardsApi.getAllFlashcards` | — |
 | GET | `/flashcards/review/today` | JwtAuthGuard | WIRED | `flashcardsApi.getDueFlashcards` | `lib/library.ts` |
 | GET | `/flashcards/:p` | JwtAuthGuard | CLIENT ONLY | `flashcardsApi.getFlashcardById` | — |
-| PATCH | `/flashcards/:p` | JwtAuthGuard | CLIENT ONLY | `flashcardsApi.updateFlashcard` | — |
+| PATCH | `/flashcards/:p` | JwtAuthGuard | WIRED | `flashcardsApi.updateFlashcard` | `lib/library.ts` |
 | DELETE | `/flashcards/:p` | JwtAuthGuard | WIRED | `flashcardsApi.deleteFlashcard` | `lib/library.ts` |
 | POST | `/flashcards/:p/review` | JwtAuthGuard | WIRED | `flashcardsApi.submitReview` | `lib/library.ts` |
 
-### Learner — Leaderboards (10: 8 WIRED, 2 CLIENT ONLY)
+### Learner — Leaderboards (10: 9 WIRED, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
@@ -576,7 +580,7 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/leaderboards/school` | none | WIRED | `leaderboardsApi.getSchoolLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/university` | none | WIRED | `leaderboardsApi.getUniversityLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/department` | none | WIRED | `leaderboardsApi.getDepartmentLeaderboard` | `lib/gamification.ts` |
-| GET | `/leaderboards/course` | none | CLIENT ONLY | `leaderboardsApi.getCourseLeaderboard` | — |
+| GET | `/leaderboards/course` | none | WIRED | `leaderboardsApi.getCourseLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/friends` | JwtAuthGuard | CLIENT ONLY | `leaderboardsApi.getFriendsLeaderboard` | — |
 | GET | `/leaderboards/weekly` | none | WIRED | `leaderboardsApi.getWeeklyLeaderboard` | `lib/gamification.ts` |
 | GET | `/leaderboards/monthly` | none | WIRED | `leaderboardsApi.getMonthlyLeaderboard` | `lib/gamification.ts` |
@@ -595,14 +599,14 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/mastery/courses/:p` | JwtAuthGuard | CLIENT ONLY | `masteryApi.getCourseMasteryById` | — |
 | GET | `/mastery/topics/:p` | JwtAuthGuard | CLIENT ONLY | `masteryApi.getTopicMasteryById` | — |
 
-### Learner — Learning from your material (6: 5 WIRED, 1 CLIENT ONLY)
+### Learner — Learning from your material (6: 6 WIRED)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | POST | `/learning/generate` | JwtAuthGuard | WIRED | `learningApi.generate` | `lib/self-learning.ts` |
 | GET | `/learning/resources` | JwtAuthGuard | WIRED | `learningApi.resources` | `lib/self-learning.ts` |
 | GET | `/learning/resources/:p` | JwtAuthGuard | WIRED | `learningApi.resource` | `lib/self-learning.ts` |
-| PATCH | `/learning/resources/:p` | JwtAuthGuard | CLIENT ONLY | `learningApi.updateResource` | — |
+| PATCH | `/learning/resources/:p` | JwtAuthGuard | WIRED | `learningApi.updateResource` | `lib/self-learning.ts` |
 | POST | `/learning/resources/:p/complete` | JwtAuthGuard | WIRED | `learningApi.completeResource` | `lib/self-learning.ts` |
 | DELETE | `/learning/resources/:p` | JwtAuthGuard | WIRED | `learningApi.deleteResource` | `lib/self-learning.ts` |
 
@@ -704,14 +708,14 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 |---|---|---|---|---|---|
 | GET | `/throttler/status` | none | FRONTEND MISSING | — | — |
 
-### Learner — Reports & Feedback (5: 3 WIRED, 2 CLIENT ONLY)
+### Learner — Reports & Feedback (5: 4 WIRED, 1 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | POST | `/reports` | JwtAuthGuard | WIRED | `reportsFeedbackApi.submitReport` | `lib/support.ts` |
 | GET | `/reports/me` | JwtAuthGuard | WIRED | `reportsFeedbackApi.getMyReports` | `lib/support.ts` |
 | POST | `/feedback` | JwtAuthGuard | WIRED | `reportsFeedbackApi.submitFeedback` | `lib/support.ts` |
-| POST | `/questions/:p/report` | JwtAuthGuard | CLIENT ONLY | `reportsFeedbackApi.reportQuestion` | — |
+| POST | `/questions/:p/report` | JwtAuthGuard | WIRED | `reportsFeedbackApi.reportQuestion` | `lib/support.ts` |
 | POST | `/content/:p/report` | JwtAuthGuard | CLIENT ONLY | `reportsFeedbackApi.reportContent` | — |
 
 ### Learner — Search (7: 1 WIRED, 6 FRONTEND MISSING)
@@ -753,14 +757,14 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | POST | `/library/favorites/:p` | JwtAuthGuard | CLIENT ONLY | `libraryApi.addFavorite` | — |
 | DELETE | `/library/favorites/:p` | JwtAuthGuard | CLIENT ONLY | `libraryApi.removeFavorite` | — |
 
-### Learner — Study Goals (7: 4 WIRED, 3 CLIENT ONLY)
+### Learner — Study Goals (7: 5 WIRED, 2 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/goals` | JwtAuthGuard | WIRED | `goalsApi.getAllGoals` | `lib/planner.ts` |
 | POST | `/goals` | JwtAuthGuard | WIRED | `goalsApi.createGoal` | `lib/planner.ts` |
 | GET | `/goals/:p` | JwtAuthGuard | CLIENT ONLY | `goalsApi.getGoalById` | — |
-| PATCH | `/goals/:p` | JwtAuthGuard | CLIENT ONLY | `goalsApi.updateGoal` | — |
+| PATCH | `/goals/:p` | JwtAuthGuard | WIRED | `goalsApi.updateGoal` | `lib/planner.ts` |
 | DELETE | `/goals/:p` | JwtAuthGuard | WIRED | `goalsApi.deleteGoal` | `lib/planner.ts` |
 | POST | `/goals/:p/complete` | JwtAuthGuard | WIRED | `goalsApi.completeGoal` | `lib/planner.ts` |
 | GET | `/goals/:p/progress` | JwtAuthGuard | CLIENT ONLY | `goalsApi.getGoalProgress` | — |
@@ -812,7 +816,7 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
 | GET | `/materials` | JwtAuthGuard | WIRED | `materialsApi.list` | `lib/learner-content.ts` |
-| POST | `/materials` | JwtAuthGuard | WIRED | `form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +27 |
+| POST | `/materials` | JwtAuthGuard | WIRED | `form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +33 |
 | GET | `/materials/:p/access` | JwtAuthGuard | WIRED | `materialsApi.access` | `lib/learner-content.ts` |
 | DELETE | `/materials/:p` | JwtAuthGuard | WIRED | `materialsApi.remove` | `lib/learner-content.ts` |
 | POST | `/materials/text` | JwtAuthGuard | WIRED | `learningApi.addTextMaterial` | `lib/self-learning.ts` |
@@ -820,11 +824,11 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 | GET | `/materials/:p/text` | JwtAuthGuard | WIRED | `learningApi.materialText` | `lib/self-learning.ts` |
 | POST | `/materials/:p/process` | JwtAuthGuard | WIRED | `learningApi.processMaterial` | `lib/self-learning.ts` |
 
-### Learner — Usage Limits (4: 4 CLIENT ONLY)
+### Learner — Usage Limits (4: 1 WIRED, 3 CLIENT ONLY)
 
 | Method | Path | Guard | Status | Client | Used by |
 |---|---|---|---|---|---|
-| GET | `/usage` | JwtAuthGuard | CLIENT ONLY | `usageApi.getUsageOverview` | — |
+| GET | `/usage` | JwtAuthGuard | WIRED | `usageApi.getUsageOverview` | `lib/usage.ts` |
 | GET | `/usage/ai` | JwtAuthGuard | CLIENT ONLY | `usageApi.getAiUsage` | — |
 | GET | `/usage/documents` | JwtAuthGuard | CLIENT ONLY | `usageApi.getDocumentUsage` | — |
 | GET | `/usage/quizzes` | JwtAuthGuard | CLIENT ONLY | `usageApi.getQuizUsage` | — |
@@ -852,7 +856,7 @@ Frontend client calls with no backend route: **0**. The learner count fell from 
 |---|---|---|---|---|---|
 | GET | `/users/me/avatar` | JwtAuthGuard | WIRED | `avatarApi.get` | `lib/avatar.ts` |
 | PUT | `/users/me/avatar` | JwtAuthGuard | WIRED | `avatarApi.choosePreset` | `lib/avatar.ts` |
-| POST | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.uploadProfilePicture`<br>`form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +27 |
+| POST | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.uploadProfilePicture`<br>`form` | `components/PricingSection.tsx`<br>`components/Tutor.tsx`<br>`lib/http-client.ts` +33 |
 | DELETE | `/users/me/profile-picture` | JwtAuthGuard | WIRED | `usersApi.removeProfilePicture`<br>`avatarApi.reset` | `lib/avatar.ts` |
 
 ### Learner — Voice AI (3: 3 CLIENT ONLY)

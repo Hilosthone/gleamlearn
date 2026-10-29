@@ -5,23 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { signOut } from '@/lib/learner-auth';
-import { 
-  Bell,
-  LayoutDashboard, 
-  BookOpen, 
-  FolderKanban, 
-  Target, 
-  GraduationCap, 
-  Bot, 
-  Calendar, 
-  TrendingUp, 
-  Settings as SettingsIcon, 
-  HelpCircle,
-  X,
-  Sparkles,
-  LogOut,
-  History
-} from 'lucide-react';
+import { X, Sparkles, LogOut } from 'lucide-react';
+import { ACCOUNT_SECTION, NAV_SECTIONS, isActiveHref } from './nav-sections';
 
 interface HamburgerMenuProps {
   isOpen: boolean;
@@ -32,21 +17,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
-    { name: 'Learn', href: '/learn', icon: BookOpen },
-    { name: 'My Courses', href: '/my-courses', icon: GraduationCap },
-    { name: 'Library', href: '/library', icon: FolderKanban },
-    { name: 'Practice', href: '/practice', icon: Target },
-    { name: 'Exams', href: '/exams', icon: GraduationCap },
-    { name: 'Planner', href: '/planner', icon: Calendar },
-    { name: 'Progress', href: '/progress', icon: TrendingUp },
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Settings', href: '/settings', icon: SettingsIcon },
-    { name: 'Help & Support', href: '/support', icon: HelpCircle },
-  ];
+  const sections = [...NAV_SECTIONS, ACCOUNT_SECTION]; // the same seven sections as the desktop sidebar
 
   const handleLogout = async () => {
     onClose();
@@ -59,7 +30,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop overlay */}
-      <div 
+      <div
         className="fixed inset-0 bg-gray-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
@@ -70,9 +41,9 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
         <div className="p-5 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 relative rounded-xl overflow-hidden flex items-center justify-center shadow-md shadow-blue-500/20 bg-white">
-              <Image 
-                src="/gleamlearn-logo.jpg" 
-                alt="gleamLearn Logo" 
+              <Image
+                src="/gleamlearn-logo.jpg"
+                alt="gleamLearn Logo"
                 fill
                 className="object-cover"
                 priority
@@ -82,7 +53,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
               Gleam<span className="text-[var(--color-brand-blue)]">Learn</span>
             </span>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
@@ -91,17 +62,21 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
         </div>
 
         {/* Links list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-thin">
-          {navItems.map((item) => {
+        <nav aria-label="Main" className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+          {sections.map((section) => (
+          <div key={section.title} className="space-y-1">
+          <p className="px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">{section.title}</p>
+          {section.items.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-            
+            const isActive = isActiveHref(pathname, item.href);
+
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex items-center justify-between px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
                   isActive
                     ? 'bg-blue-50 dark:bg-blue-950/40 text-[var(--color-brand-blue)] dark:text-blue-400 font-semibold'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
@@ -119,6 +94,8 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
               </Link>
             );
           })}
+          </div>
+          ))}
 
           {/* Logout Button */}
           <button
@@ -128,7 +105,7 @@ export default function HamburgerMenu({ isOpen, onClose }: HamburgerMenuProps) {
             <LogOut className="w-5 h-5" />
             <span>Log Out</span>
           </button>
-        </div>
+        </nav>
 
         {/* Footer banner */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-800">

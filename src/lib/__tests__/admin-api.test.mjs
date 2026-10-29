@@ -21,7 +21,7 @@ globalThis.fetch = async (url, init) => {
 };
 
 const { adminAuthApi, adminUsersApi, adminDashboardApi, adminSettingsApi, adminContentApi } = await import('../admin-api.ts');
-const { isActivePath, visibleNavItems, ADMIN_NAV } = await import('../../components/admin/admin-nav.ts');
+const { isActivePath, visibleNavItems, visibleNavSections, ADMIN_NAV } = await import('../../components/admin/admin-nav.ts');
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -189,7 +189,12 @@ test('a 403 from the backend is a typed "forbidden" error and keeps the session'
 test('navigation shows only sections the role is permitted to use', () => {
   const contentAdmin = new Set(['admin.self', 'content.manage']);
   const names = visibleNavItems(ADMIN_NAV, (p) => contentAdmin.has(p)).map((i) => i.name);
-  assert.deepEqual(names, ['Overview', 'Learning content', 'Assessments']);
+  assert.deepEqual(names, ['Overview', 'School directory', 'Courses & lessons', 'Quizzes, tests & exams', 'Question bank']);
+  // grouped: only sections with a permitted item are shown, in order
+  assert.deepEqual(visibleNavSections((p) => contentAdmin.has(p)).map((s) => s.title), ['Overview', 'Users & academics', 'Learning content', 'Assessments & questions']);
+  assert.equal(visibleNavSections(() => true).length, 10);
+  const moderator = new Set(['admin.self', 'users.view', 'moderation.manage']);
+  assert.deepEqual(visibleNavItems(ADMIN_NAV, (p) => moderator.has(p)).map((i) => i.name), ['Overview', 'Users', 'Reports & moderation']);
   const superAdmin = visibleNavItems(ADMIN_NAV, () => true);
   assert.equal(superAdmin.length, ADMIN_NAV.length);
   assert.deepEqual(visibleNavItems(ADMIN_NAV, () => false), []);

@@ -1,4 +1,5 @@
-// e2e/browser/admin.mjs — real-browser check of /admin/assessments and /admin/moderation against a LOCAL backend.
+// e2e/browser/admin.mjs — real-browser check of /admin/assessments, /admin/moderation (reports and feedback) and
+// /admin/academic (the school directory) against a LOCAL backend.
 // Uses the LOCAL super admin from <BACKEND_DIR>/.env (default ../mycoursea-backend). Credentials are never printed.
 import fs from 'fs';
 import path from 'path';
@@ -99,12 +100,72 @@ async function main() {
       assert(r.status === 404, `learner read ${r.status}`);
     });
 
-    await check('Moderation: real (empty) queues and an honest note about why', async () => {
+    await check('Moderation: a learner\'s report is queued; rejecting it closes it for the learner', async () => {
+      const problem = `Admin check report ${RUN}`;
+      const sent = await api('/reports', learner, { method: 'POST', body: JSON.stringify({ type: 'OTHER', reason: 'Something is broken', details: problem }) });
+      assert(sent.status === 201, `report ${sent.status}`);
       await p.goto(`${BASE}/admin/moderation`, ready('h1'));
-      await p.waitFor(has('No pending reports'), { timeout: 20000 });
-      assert(await p.eval(has("Learners can't submit reports from the app yet")), 'no note');
+      await p.waitFor(has(problem), { label: 'report queued', timeout: 20000 });
+      assert(await p.eval(has('Learners send reports from Help & Support')), 'notice');
+      const ok = await p.eval(`(() => { const li = [...document.querySelectorAll('li')].find((x) => x.textContent.includes(${JSON.stringify(problem)})); const b = li?.querySelector('button[aria-label="Reject report"]'); if (!b) return false; b.click(); return true; })()`);
+      assert(ok, 'no reject button');
+      await p.waitFor(`!document.body.innerText.includes(${JSON.stringify(problem)})`, { label: 'left the pending queue', timeout: 15000 });
+      const mine = (await api('/reports/me', learner)).json;
+      assert(mine.find((x) => x.details === problem)?.status === 'REJECTED', JSON.stringify(mine).slice(0, 200));
+    });
+
+    await check('Moderation → Feedback: learner feedback with its rating and the overall average', async () => {
+      const msg = `Admin check feedback ${RUN}`;
+      const sent = await api('/feedback', learner, { method: 'POST', body: JSON.stringify({ rating: 2, message: msg }) });
+      assert(sent.status === 201, `feedback ${sent.status}`);
+      await clickIn(p, '[role=tab]', 'Feedback');
+      await p.waitFor(has(msg), { label: 'feedback listed', timeout: 20000 });
+      const stars = await p.eval(`[...document.querySelectorAll('ul[aria-label="Feedback"] li')].find((x) => x.textContent.includes(${JSON.stringify(msg)}))?.querySelector('[aria-label$="of 5 stars"]')?.getAttribute('aria-label')`);
+      assert(stars === '2 of 5 stars', String(stars));
+      assert(await p.eval(`/average \\d/.test(document.querySelector('[aria-label="Feedback summary"]')?.textContent ?? '')`), 'average');
+      const asLearner = await api('/admin/feedback', learner);
+      assert(asLearner.status === 401 || asLearner.status === 403, `learner → ${asLearner.status}`);
       await clickIn(p, '[role=tab]', 'AI content');
       await p.waitFor(has('No pending AI content'), { timeout: 20000 });
+      return `learner token on /admin/feedback → ${asLearner.status}`;
+    });
+
+    await check('School directory: add a university, a faculty and a department; learners get them as suggestions', async () => {
+      const UNI = `Admin Check University ${RUN}`;
+      await p.goto(`${BASE}/admin/academic`, ready('h1'));
+      await clickIn(p, 'button', 'New institution');
+      await p.fill('form[aria-label="New institution"] input', UNI);
+      await clickIn(p, 'form[aria-label="New institution"] button', 'Save');
+      await p.waitFor(has(UNI), { label: 'institution listed', timeout: 15000 });
+      await p.eval(`[...document.querySelectorAll('button[aria-expanded]')].find((b) => b.textContent.includes(${JSON.stringify(UNI)})).click()`);
+      await sleep(400);
+      await sleep(2600); // directory writes are limited to one per 3 s
+      await clickIn(p, 'button', 'Add faculty');
+      await p.fill(`form[aria-label="New faculty in ${UNI}"] input`, 'Faculty of Science');
+      await clickIn(p, `form[aria-label="New faculty in ${UNI}"] button`, 'Save');
+      await p.waitFor(has('Faculty of Science'), { label: 'faculty', timeout: 15000 });
+      await sleep(3100);
+      await clickIn(p, 'button', 'Add department');
+      await p.fill('form[aria-label="New department in Faculty of Science"] input', 'Microbiology');
+      await clickIn(p, 'form[aria-label="New department in Faculty of Science"] button', 'Save');
+      await p.waitFor(has('Microbiology'), { label: 'department', timeout: 15000 });
+      const dir = (await api('/institutions', learner)).json;
+      const uni = dir.find((x) => x.name === UNI);
+      assert(uni?.type === 'University' && uni.faculties?.[0]?.departments?.[0]?.name === 'Microbiology', JSON.stringify(uni).slice(0, 200));
+      const bad = await api('/institutions', admin, { method: 'POST', body: JSON.stringify({ name: `Bad ${RUN}`, type: 'Polytechnic' }) });
+      assert(bad.status === 400 || bad.status === 429, `unknown type → ${bad.status}`);
+      const asLearner = await api('/admin/institutions', learner);
+      assert(asLearner.status === 401 || asLearner.status === 403, `learner on admin read → ${asLearner.status}`);
+      // the server only deletes empty parents, so the console disables those buttons; delete bottom-up
+      assert(await p.eval(`document.querySelector(${JSON.stringify(`button[aria-label="Delete ${UNI}"]`)}).disabled`), 'non-empty institution deletable');
+      await p.eval(`window.confirm = () => true`);
+      for (const label of ['Delete department Microbiology', 'Delete faculty Faculty of Science', `Delete ${UNI}`]) {
+        await sleep(3100);
+        await p.waitFor(`!document.querySelector(${JSON.stringify(`button[aria-label="${label}"]`)})?.disabled`, { label: `${label} enabled`, timeout: 15000 });
+        await p.eval(`document.querySelector(${JSON.stringify(`button[aria-label="${label}"]`)}).click()`);
+        await p.waitFor(`!document.querySelector(${JSON.stringify(`button[aria-label="${label}"]`)})`, { label: `${label} done`, timeout: 15000 });
+      }
+      return 'learners read it from /institutions; unknown types refused; deleting removes it';
     });
 
     const unexpected = p.consoleErrors.filter((e) => !/status of 429/.test(e));

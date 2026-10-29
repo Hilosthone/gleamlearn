@@ -55,7 +55,7 @@ function SettingsView() {
         <Info className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" aria-hidden="true" />
         <p className="text-xs text-gray-600 dark:text-gray-300">
           <span className="font-semibold">Stored, not yet applied.</span> The platform does not read these values yet (for
-          example, maintenance mode does not block access and AI limits are fixed in code), so editing is disabled here to
+          example, maintenance mode does not block access, and AI requests are not capped at all), so editing is disabled here to
           avoid implying a change that would not take effect.
         </p>
       </div>

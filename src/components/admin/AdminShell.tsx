@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import { LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { OfflineBanner } from '@/components/ui/states';
 import { useAdminSession } from './AdminSessionProvider';
-import { ADMIN_ACCOUNT_NAV, ADMIN_NAV, isActivePath, visibleNavItems, type AdminNavItem } from './admin-nav';
+import { ADMIN_ACCOUNT_NAV, isActivePath, visibleNavSections, type AdminNavItem } from './admin-nav';
 
 function NavLinks({ items, pathname, onNavigate }: { items: AdminNavItem[]; pathname: string; onNavigate?: () => void }) {
   return (
@@ -22,7 +22,7 @@ function NavLinks({ items, pathname, onNavigate }: { items: AdminNavItem[]; path
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
-            className={`flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-blue)] ${
+            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-blue)] ${
               active
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-[var(--color-brand-blue)] dark:text-blue-400 font-semibold shadow-xs'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
@@ -64,7 +64,7 @@ function Brand() {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { admin, can, logout } = useAdminSession();
-  const navItems = visibleNavItems(ADMIN_NAV, can);
+  const sections = visibleNavSections(can);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -83,9 +83,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const sidebarBody = (onNavigate?: () => void) => (
     <>
-      <nav aria-label="Admin" className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5">
-        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Manage</p>
-        <NavLinks items={navItems} pathname={pathname} onNavigate={onNavigate} />
+      <nav aria-label="Admin" className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+        {sections.map((section) => (
+          <div key={section.title} className="space-y-1">
+            <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">{section.title}</p>
+            <NavLinks items={section.items} pathname={pathname} onNavigate={onNavigate} />
+          </div>
+        ))}
       </nav>
       <div className="p-4 border-t border-gray-100 dark:border-gray-800/60 space-y-1">
         <NavLinks items={ADMIN_ACCOUNT_NAV} pathname={pathname} onNavigate={onNavigate} />

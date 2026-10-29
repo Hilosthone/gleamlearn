@@ -469,3 +469,344 @@ export const adminModerationApi = {
   rejectAiContent: (id: string, options?: Options) => adminHttp.request<Ok<AdminAiContentRecord>>(`/admin/ai/generated-content/${enc(id)}/reject`, { ...options, method: 'PATCH' }),
   deleteAiContent: (id: string, options?: Options) => adminHttp.request<unknown>(`/admin/ai/generated-content/${enc(id)}`, { ...options, method: 'DELETE' }),
 };
+
+// ==========================================
+// FEEDBACK — /api/v1/admin/feedback (moderation.manage)
+// ==========================================
+
+export interface AdminFeedbackRecord {
+  id: string;
+  userId: string;
+  rating: number;
+  message: string;
+  createdAt: string;
+}
+
+export const adminFeedbackApi = {
+  list: (params: { page?: number; rating?: number } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ feedback: AdminFeedbackRecord[]; summary: { count: number; averageRating: number | null }; pagination: Pagination }>>(
+      `/admin/feedback${query({ page: params.page, limit: 20, rating: params.rating })}`,
+      options,
+    ),
+};
+
+// ==========================================
+// SCHOOL DIRECTORY — GET /api/v1/admin/institutions; writes on /institutions, /faculties, /departments (content.manage)
+// Learners see these as suggestions when they edit their school details.
+// ==========================================
+
+export type InstitutionType = 'Secondary' | 'University' | 'Institute';
+export interface AdminDepartment {
+  id: string;
+  name: string;
+  facultyId: string;
+}
+export interface AdminFaculty {
+  id: string;
+  name: string;
+  institutionId: string;
+  departments: AdminDepartment[];
+}
+export interface AdminInstitution {
+  id: string;
+  name: string;
+  type: string;
+  state: string | null;
+  country: string | null;
+  faculties: AdminFaculty[];
+}
+export interface InstitutionInput {
+  name: string;
+  type: InstitutionType;
+  state?: string;
+  country?: string;
+}
+
+export const adminAcademicApi = {
+  list: (options?: Options) => adminHttp.request<AdminInstitution[]>('/admin/institutions', options),
+  createInstitution: (input: InstitutionInput, options?: Options) => adminHttp.request<AdminInstitution>('/institutions', { ...options, method: 'POST', body: input }),
+  updateInstitution: (id: string, input: InstitutionInput, options?: Options) => adminHttp.request<AdminInstitution>(`/institutions/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  deleteInstitution: (id: string, options?: Options) => adminHttp.request<unknown>(`/institutions/${enc(id)}`, { ...options, method: 'DELETE' }),
+  createFaculty: (input: { name: string; institutionId: string }, options?: Options) => adminHttp.request<AdminFaculty>('/faculties', { ...options, method: 'POST', body: input }),
+  updateFaculty: (id: string, input: { name: string; institutionId: string }, options?: Options) => adminHttp.request<AdminFaculty>(`/faculties/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  deleteFaculty: (id: string, options?: Options) => adminHttp.request<unknown>(`/faculties/${enc(id)}`, { ...options, method: 'DELETE' }),
+  createDepartment: (input: { name: string; facultyId: string }, options?: Options) => adminHttp.request<AdminDepartment>('/departments', { ...options, method: 'POST', body: input }),
+  updateDepartment: (id: string, input: { name: string; facultyId: string }, options?: Options) => adminHttp.request<AdminDepartment>(`/departments/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  deleteDepartment: (id: string, options?: Options) => adminHttp.request<unknown>(`/departments/${enc(id)}`, { ...options, method: 'DELETE' }),
+  /** GET /academic-levels — the standard levels and streams (defined by the platform, read-only) */
+  levels: (options?: Options) => adminHttp.request<{ secondaryLevels: string[]; universityLevels: string[]; secondaryStreams: string[] }>('/academic-levels', options),
+};
+
+// ==========================================
+// USERS (more) — progress, analytics, password reset, XP / coin adjustments
+// ==========================================
+
+export interface AdminUserProgress {
+  userId: string;
+  coursesEnrolled: number;
+  coursesCompleted: number;
+  lessonsCompleted: number;
+  officialAttemptsSubmitted: number;
+  ownAssessmentsSubmitted: number;
+  personalCourses: number;
+  generatedResources: number;
+  uploadedMaterials: number;
+}
+export interface AdminUserAnalytics {
+  userId: string;
+  xpEarned: number;
+  coinsBalance: number;
+  currentStreak: number;
+  longestStreak: number;
+  trackedStudyHours: number;
+}
+
+export const adminUserInsightsApi = {
+  progress: (id: string, options?: Options) => adminHttp.request<Envelope<AdminUserProgress>>(`/admin/users/${enc(id)}/progress`, options),
+  analytics: (id: string, options?: Options) => adminHttp.request<Envelope<AdminUserAnalytics>>(`/admin/users/${enc(id)}/analytics`, options),
+  /** PATCH /admin/users/:id/reset-password { newPassword (8+) } — users.manage; recorded in the audit log */
+  resetPassword: (id: string, newPassword: string, options?: Options) =>
+    adminHttp.request<{ status: 'success'; message: string }>(`/admin/users/${enc(id)}/reset-password`, { ...options, method: 'PATCH', body: { newPassword } }),
+  /** POST /admin/users/:id/xp | coins { amount (may be negative), reason (5+) } — users.manage; audit-logged */
+  adjust: (id: string, kind: 'xp' | 'coins', amount: number, reason: string, options?: Options) =>
+    adminHttp.request<{ status: 'success'; message?: string; data?: unknown }>(`/admin/users/${enc(id)}/${kind}`, { ...options, method: 'POST', body: { amount, reason } }),
+};
+
+// ==========================================
+// GAMIFICATION — /api/v1/admin/gamification (analytics.view); computed from the XP, coin and streak tables
+// ==========================================
+
+export interface AdminXpOverview {
+  totalXpGenerated: number;
+  learnersWithXp: number;
+  averageXpPerEarner: number | null;
+  topXpEarner: { userId: string; email: string; xp: number } | null;
+}
+export interface AdminCoinsOverview {
+  totalCoinsEarned: number;
+  totalCoinsSpent: number;
+  totalCoinsCirculating: number;
+}
+export interface AdminStreaksOverview {
+  activeStreaksCount: number;
+  longestActiveStreak: number | null;
+  averageActiveStreakDays: number | null;
+  longestStreakEver: number;
+}
+export interface AdminLeaderboardRow {
+  rank: number;
+  userId: string;
+  email: string;
+  xp: number;
+  coins: number;
+  streak: number;
+}
+
+export const adminGamificationApi = {
+  xp: (options?: Options) => adminHttp.request<Ok<AdminXpOverview>>('/admin/gamification/xp', options),
+  coins: (options?: Options) => adminHttp.request<Ok<AdminCoinsOverview>>('/admin/gamification/coins', options),
+  streaks: (options?: Options) => adminHttp.request<Ok<AdminStreaksOverview>>('/admin/gamification/streaks', options),
+  leaderboard: (page = 1, options?: Options) =>
+    adminHttp.request<Ok<{ leaderboard: AdminLeaderboardRow[]; pagination: Pagination }>>(`/admin/gamification/leaderboards${query({ page, limit: 20 })}`, options),
+};
+
+// ==========================================
+// SECURITY & AUDIT — /admin/security (security.view), /admin/audit-logs (security.view), /admin/activity (analytics.view),
+// /admin/access (roles.manage)
+// ==========================================
+
+export interface AdminLogEntry {
+  id: string;
+  adminId?: string | null;
+  userId?: string | null;
+  category?: string | null;
+  action: string;
+  target?: string | null;
+  details?: string | null;
+  timestamp: string;
+}
+export interface AdminSecurityEvent {
+  id: string;
+  severity?: string;
+  eventType?: string;
+  description?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+export interface AdminRestrictedUser {
+  id: string;
+  username?: string | null;
+  email: string;
+  fullName?: string | null;
+  restrictionReason?: string | null;
+  updatedAt?: string;
+}
+export interface AdminAccessModel {
+  roles: { role: string; permissions: AdminPermissionName[] }[];
+  accounts: { id: string; email: string; fullName?: string | null; role: string; isActive: boolean; createdAt?: string }[];
+}
+export const ACTIVITY_CATEGORIES = ['users', 'learning', 'assessments', 'ai', 'payments'] as const;
+
+export const adminSecurityApi = {
+  events: (params: { page?: number; severity?: string } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ securityEvents: AdminSecurityEvent[]; pagination: Pagination }>>(`/admin/security/events${query({ page: params.page, limit: 20, severity: params.severity })}`, options),
+  restrictedUsers: (options?: Options) => adminHttp.request<Ok<{ suspiciousUsersCount: number; users: AdminRestrictedUser[] }>>('/admin/security/suspicious-users', options),
+  auditLogs: (params: { page?: number; category?: string; action?: string } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ auditLogs: AdminLogEntry[]; pagination: Pagination }>>(`/admin/audit-logs${query({ page: params.page, limit: 20, category: params.category, action: params.action })}`, options),
+  auditLog: (id: string, options?: Options) => adminHttp.request<Ok<AdminLogEntry>>(`/admin/audit-logs/${enc(id)}`, options),
+  /** GET /admin/activity[/:category] — analytics.view */
+  activity: (params: { page?: number; category?: (typeof ACTIVITY_CATEGORIES)[number] } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ activities: AdminLogEntry[]; pagination: Pagination }>>(`/admin/activity${params.category ? `/${params.category}` : ''}${query({ page: params.page, limit: 20 })}`, options),
+  access: (options?: Options) => adminHttp.request<Ok<AdminAccessModel>>('/admin/access', options),
+};
+
+// ==========================================
+// SYSTEM — /admin/system (system.view). Health is real; the other metrics answer 501 (no source connected).
+// ==========================================
+
+export interface AdminSystemHealth {
+  serverStatus: string;
+  timestamp: string;
+  uptimeSeconds: number;
+  database: { connected: boolean };
+  system: { platform: string; nodeVersion: string; cpuArch: string; totalMemoryMb: number; freeMemoryMb: number; heapUsedMb: number };
+}
+export const SYSTEM_METRICS = ['queues', 'storage', 'ai', 'errors'] as const;
+
+export const adminSystemApi = {
+  health: (options?: Options) => adminHttp.request<Ok<AdminSystemHealth>>('/admin/system/health', options),
+  metric: (name: (typeof SYSTEM_METRICS)[number], options?: Options) => adminHttp.request<Ok<Record<string, unknown>>>(`/admin/system/${name}`, options),
+};
+
+// ==========================================
+// NOTIFICATIONS — /admin/notifications (notifications.send). Delivered into the learners' notifications.
+// ==========================================
+
+export const BROADCAST_TARGETS = [
+  ['EVERYONE', 'Every learner'],
+  ['SECONDARY_STUDENTS', 'Secondary school learners'],
+  ['UNIVERSITY_STUDENTS', 'University learners'],
+  ['SPECIFIC_INSTITUTION', 'One school or university'],
+  ['SPECIFIC_DEPARTMENT', 'One department'],
+] as const;
+export interface AdminNotificationRecord {
+  id: string;
+  title: string;
+  message: string;
+  targetType: string;
+  targetId?: string | null;
+  senderAdminId?: string | null;
+  createdAt?: string;
+  deliveredCount?: number;
+}
+
+export const adminNotificationsApi = {
+  history: (page = 1, options?: Options) =>
+    adminHttp.request<Ok<{ notifications: AdminNotificationRecord[]; pagination: Pagination }>>(`/admin/notifications${query({ page, limit: 20 })}`, options),
+  sendToUser: (input: { userId: string; title: string; message: string }, options?: Options) =>
+    adminHttp.request<Ok<AdminNotificationRecord>>('/admin/notifications', { ...options, method: 'POST', body: input }),
+  broadcast: (input: { target: string; targetId?: string; title: string; message: string }, options?: Options) =>
+    adminHttp.request<Ok<AdminNotificationRecord>>('/admin/notifications/broadcast', { ...options, method: 'POST', body: input }),
+  /** removes the history record only; delivered notifications stay with the learners */
+  removeRecord: (id: string, options?: Options) => adminHttp.request<unknown>(`/admin/notifications/${enc(id)}`, { ...options, method: 'DELETE' }),
+};
+
+// ==========================================
+// FINANCE, SUBSCRIPTIONS, ANALYTICS — payments are not live; most answer 501 and the console shows that.
+// ==========================================
+
+export const ANALYTICS_SECTIONS = ['overview', 'students', 'courses', 'subjects', 'exams', 'quizzes', 'tests', 'learning', 'retention', 'streaks'] as const;
+export const FINANCE_SECTIONS = ['overview', 'revenue', 'transactions', 'subscriptions', 'refunds', 'revenue/daily', 'revenue/monthly'] as const;
+
+export const adminInsightsApi = {
+  analytics: (section: (typeof ANALYTICS_SECTIONS)[number], options?: Options) => adminHttp.request<Ok<Record<string, unknown>>>(`/admin/analytics/${section}`, options),
+  finance: (section: (typeof FINANCE_SECTIONS)[number], options?: Options) => adminHttp.request<Ok<Record<string, unknown>>>(`/admin/finance/${section}`, options),
+  subscriptions: (page = 1, options?: Options) =>
+    adminHttp.request<Ok<{ subscriptions: Record<string, unknown>[]; pagination: Pagination }>>(`/admin/subscriptions${query({ page, limit: 20 })}`, options),
+  dashboardSection: (section: 'users' | 'activity' | 'revenue' | 'learning' | 'engagement', options?: Options) =>
+    adminHttp.request<Ok<Record<string, unknown>>>(`/admin/dashboard/${section}`, options),
+};
+
+// ==========================================
+// EXPORTS — /admin/export/:kind?format= (data.export: Super Admin). Downloaded as a file.
+// ==========================================
+
+export const EXPORT_KINDS = [
+  ['users', 'Learner accounts', 'Name, username, email, education type, university, verification and restriction status, sign-up date'],
+  ['analytics', 'Account totals', 'Registered, verified and restricted account counts'],
+  ['activity', 'Admin activity log', 'Up to 1,000 recorded administrative actions'],
+  ['transactions', 'Payment transactions', 'Payments are not live, so this export is unavailable'],
+] as const;
+
+export class AdminExportError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Fetches the export with the admin token and hands it to the browser as a download. */
+export async function downloadAdminExport(kind: string, format: 'csv' | 'json'): Promise<{ filename: string; bytes: number }> {
+  const token = getStoredToken('admin');
+  const res = await fetch(`${API_BASE_URL}/admin/export/${enc(kind)}?format=${format}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string; code?: string } | null;
+    throw new AdminExportError(body?.message || `Export failed (${res.status}).`, res.status, body?.code);
+  }
+  const blob = await res.blob();
+  const filename = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? `${kind}-export.${format}`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return { filename, bytes: blob.size };
+}
+
+// ==========================================
+// QUESTION BANK — the shared `questions` table learners practise from.
+// GET /questions/manage/all (admin read); POST/PATCH/DELETE /questions (content.manage).
+// ==========================================
+
+export interface BankQuestion {
+  id: string;
+  subject?: string | null;
+  topic?: string | null;
+  difficulty?: string | null;
+  type?: string | null;
+  examination?: string | null;
+  year?: number | null;
+  source?: string | null;
+  questionText: string;
+  options?: string[] | null;
+  correctAnswer: string;
+  explanation?: string | null;
+  createdAt?: string;
+}
+export type BankQuestionInput = Omit<BankQuestion, 'id' | 'createdAt'>;
+
+export const adminQuestionBankApi = {
+  list: (params: { page?: number; search?: string; subject?: string; examination?: string } = {}, options?: Options) =>
+    adminHttp.request<Ok<{ questions: BankQuestion[]; pagination: Pagination }>>(
+      `/questions/manage/all${query({ page: params.page, limit: 20, search: params.search?.trim(), subject: params.subject?.trim(), examination: params.examination?.trim() })}`,
+      options,
+    ),
+  create: (input: BankQuestionInput, options?: Options) => adminHttp.request<BankQuestion>('/questions', { ...options, method: 'POST', body: input }),
+  update: (id: string, input: BankQuestionInput, options?: Options) => adminHttp.request<BankQuestion>(`/questions/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  remove: (id: string, options?: Options) => adminHttp.request<unknown>(`/questions/${enc(id)}`, { ...options, method: 'DELETE' }),
+};
+
+// moderation details (GET/PATCH /admin/reports/:id, GET /admin/ai/generated-content/:id)
+export const adminModerationDetailApi = {
+  report: (id: string, options?: Options) => adminHttp.request<Ok<AdminReportRecord>>(`/admin/reports/${enc(id)}`, options),
+  /** PATCH /admin/reports/:id { reason?, description? } — the moderator's re-categorisation or notes */
+  updateReport: (id: string, input: { reason?: string; description?: string }, options?: Options) =>
+    adminHttp.request<Ok<AdminReportRecord>>(`/admin/reports/${enc(id)}`, { ...options, method: 'PATCH', body: input }),
+  aiContent: (id: string, options?: Options) => adminHttp.request<Ok<AdminAiContentRecord>>(`/admin/ai/generated-content/${enc(id)}`, options),
+};

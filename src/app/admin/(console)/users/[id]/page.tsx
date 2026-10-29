@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { ADMIN_LOGIN_PATH, useAdminSession } from '@/components/admin/AdminSessionProvider';
 import { RequirePermission } from '@/components/admin/RequirePermission';
+import { UserLearning, UserMoreActions } from '@/components/admin/UserExtras';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -62,6 +63,7 @@ function UserDetail() {
   const [change, setChange] = useState<RestrictionChange | null>(null);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState('');
+  const [revision, setRevision] = useState(0); // bumped after an action so the learning overview reloads
 
   const user = useApiQuery((signal) => adminUsersApi.get(id, { signal }), [id], { enabled: Boolean(id) });
   const activity = useApiQuery((signal) => adminUsersApi.activity(id, { signal }), [id], { enabled: Boolean(id) });
@@ -295,6 +297,9 @@ function UserDetail() {
           );
         }}
       </QueryState>
+
+      <UserLearning userId={id} version={revision} />
+      <UserMoreActions userId={id} onChanged={() => { user.retry(); activity.retry(); setRevision((n) => n + 1); }} />
 
       <section className={`${card} p-6 space-y-4`} aria-labelledby="history-heading">
         <h2 id="history-heading" className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">

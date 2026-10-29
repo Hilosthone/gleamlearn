@@ -5,49 +5,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { signOut } from '@/lib/learner-auth';
-import { 
-  Bell,
-  LayoutDashboard, 
-  BookOpen, 
-  FolderKanban, 
-  Target, 
-  GraduationCap, 
-  Bot, 
-  Calendar, 
-  TrendingUp, 
-  Settings as SettingsIcon, 
-  HelpCircle,
-  Sparkles,
-  LogOut,
-  History
-} from 'lucide-react';
+import { Sparkles, LogOut } from 'lucide-react';
+import { ACCOUNT_SECTION, NAV_SECTIONS, isActiveHref } from './nav-sections';
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Navigation items mapping to your architecture phases
-  const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'AI Assistant', href: '/ai', icon: Bot, badge: 'AI' },
-    { name: 'Learn', href: '/learn', icon: BookOpen },
-    { name: 'My Courses', href: '/my-courses', icon: GraduationCap },
-    { name: 'Library', href: '/library', icon: FolderKanban },
-    { name: 'Practice', href: '/practice', icon: Target },
-    { name: 'Exams', href: '/exams', icon: GraduationCap },
-    { name: 'Planner', href: '/planner', icon: Calendar },
-    { name: 'Progress', href: '/progress', icon: TrendingUp },
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-  ];
-
-  const bottomNavItems = [
-    { name: 'Settings', href: '/settings', icon: SettingsIcon },
-   { name: 'Help & Support', href: '/support', icon: HelpCircle },
-    // { name: 'Notifications', href: '/notifications', icon: Bell },
-    // { name: 'Settings', href: '/settings', icon: SettingsIcon },
-    // { name: 'Help & Support', href: '/support', icon: HelpCircle },
-  ];
+  // Seven sections (nav-sections.ts); the Account section sits at the bottom
+  const bottomNavItems = ACCOUNT_SECTION.items;
 
   const handleLogout = async () => {
     await signOut(); // deletes the learner token (the backend logout is stateless)
@@ -60,9 +26,9 @@ export default function Sidebar() {
       <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/60">
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="w-9 h-9 relative rounded-xl overflow-hidden flex items-center justify-center shadow-md shadow-blue-500/20 bg-white">
-            <Image 
-              src="/gleamlearn-logo.jpg" 
-              alt="GleamLearn Logo" 
+            <Image
+              src="/gleamlearn-logo.jpg"
+              alt="GleamLearn Logo"
               fill
               className="object-cover"
               priority
@@ -75,20 +41,22 @@ export default function Sidebar() {
       </div>
 
       {/* Main Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 scrollbar-thin">
-        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
-          Menu
+      <nav aria-label="Main" className="flex-1 overflow-y-auto px-4 py-5 space-y-4 scrollbar-thin">
+        {NAV_SECTIONS.map((section) => (
+        <div key={section.title} className="space-y-1">
+        <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">
+          {section.title}
         </p>
-        {navItems.map((item) => {
+        {section.items.map((item) => {
           const Icon = item.icon;
-          // Check if current route matches or is a subroute
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-          
+          const isActive = isActiveHref(pathname, item.href);
+
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-950/40 text-[var(--color-brand-blue)] dark:text-blue-400 font-semibold shadow-xs'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
@@ -106,17 +74,20 @@ export default function Sidebar() {
             </Link>
           );
         })}
-      </div>
+        </div>
+        ))}
+      </nav>
 
       {/* Bottom Section: Support, Settings & Logout */}
       <div className="p-4 border-t border-gray-100 dark:border-gray-800/60 space-y-1">
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = isActiveHref(pathname, item.href);
           return (
             <Link
               key={item.name}
               href={item.href}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-950/40 text-[var(--color-brand-blue)] dark:text-blue-400 font-semibold'
