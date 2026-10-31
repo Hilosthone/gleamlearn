@@ -1,7 +1,7 @@
 // 'use client';
 
 // import React, { useState, useEffect } from 'react';
-// import { Menu, Bell, Zap, Flame, Coins, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
+// import { Menu, Bell, Zap, Flame, Coins, User, Settings, LogOut, Sun, Moon, Sparkles } from 'lucide-react';
 // import Link from 'next/link';
 // import { useRouter } from 'next/navigation';
 // import { firstNameOf, signOut } from '@/lib/learner-auth';
@@ -79,44 +79,47 @@
 //   };
 
 //   return (
-//     <header className="h-16 bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between">
+//     <header className="h-16 bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2">
 //       {/* Left side: Hamburger menu trigger for mobile/tablet + Page context */}
-//       <div className="flex items-center gap-3">
+//       <div className="flex items-center gap-2.5 min-w-0">
 //         <button
 //           onClick={onOpenMobileMenu}
-//           className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
+//           className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95 shrink-0"
 //           aria-label="Open Menu"
 //         >
 //           <Menu className="w-5 h-5" />
 //         </button>
 
-//         {/* Quick welcome text or breadcrumb placeholder */}
-//         <div className="hidden sm:block">
-//           <h2 className="text-sm font-bold text-gray-900 dark:text-white">Welcome back, Scholar{firstName ? ` ${firstName}` : ''} 👋</h2>
-//           <p className="text-xs text-gray-500 dark:text-gray-400">Ready to crush your study goals today?</p>
+//         {/* Quick welcome text or breadcrumb placeholder with icon instead of emoji */}
+//         <div className="hidden sm:block min-w-0">
+//           <h2 className="text-sm font-bold text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+//             <span>Welcome back, Scholar{firstName ? ` ${firstName}` : ''}</span>
+//             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
+//           </h2>
+//           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Ready to crush your study goals today?</p>
 //         </div>
 //       </div>
 
 //       {/* Right side: Gamification stats, Theme Toggle, Notification & Profile */}
-//       <div className="flex items-center gap-1 sm:gap-4">
+//       <div className="flex items-center gap-1 sm:gap-3 shrink-0">
 //         <GlobalSearch />
 
 //         {/* Streak Counter Badge */}
-//         <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-2xs">
-//           <Flame className="w-4 h-4 fill-orange-500 text-orange-500" />
-//           <span>{typeof streakDays === 'number' ? `${streakDays} Day${streakDays === 1 ? '' : 's'}` : '—'}</span>
+//         <div className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 text-xs font-bold shadow-2xs">
+//           <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500 shrink-0" />
+//           <span>{typeof streakDays === 'number' ? `${streakDays}d` : '—'}</span>
 //           <span className="sr-only">streak</span>
 //         </div>
 
 //         {/* XP Counter Badge */}
 //         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-[var(--color-brand-blue)] dark:text-blue-400 text-xs font-bold shadow-2xs">
-//           <Zap className="w-4 h-4 fill-blue-500 text-blue-500" />
+//           <Zap className="w-4 h-4 fill-blue-500 text-blue-500 shrink-0" />
 //           <span>{typeof totalXp === 'number' ? `${totalXp.toLocaleString()} XP` : '— XP'}</span>
 //         </div>
 
 //         {/* Coins Counter Badge */}
 //         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-2xs">
-//           <Coins className="w-4 h-4 text-amber-500 fill-amber-500" />
+//           <Coins className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
 //           <span>{typeof coinBalance === 'number' ? coinBalance.toLocaleString() : '—'}</span>
 //           <span className="sr-only">coins</span>
 //         </div>
@@ -125,30 +128,30 @@
 //         <button
 //           onClick={toggleTheme}
 //           aria-label="Toggle Theme"
-//           className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
+//           className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95 shrink-0"
 //         >
 //           {isDarkMode ? (
-//             <Sun className="w-5 h-5 text-amber-400 animate-in fade-in zoom-in-75 duration-300" />
+//             <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-in fade-in zoom-in-75 duration-300" />
 //           ) : (
-//             <Moon className="w-5 h-5 text-gray-600 animate-in fade-in zoom-in-75 duration-300" />
+//             <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 animate-in fade-in zoom-in-75 duration-300" />
 //           )}
 //         </button>
 
 //         {/* Notification Bell */}
 //         <Link
 //           href="/notifications"
-//           className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95"
+//           className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-95 shrink-0"
 //           aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
 //         >
-//           <Bell className="w-5 h-5" aria-hidden="true" />
+//           <Bell className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
 //           {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#111827]" aria-hidden="true" />}
 //         </Link>
 
 //         {/* Profile Avatar & Dropdown */}
-//         <div className="relative">
+//         <div className="relative shrink-0">
 //           <button
 //             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-//             className="w-9 h-9 rounded-full flex items-center justify-center shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
+//             className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shadow-md ring-2 ring-transparent hover:ring-blue-400 transition-all duration-200 active:scale-95 cursor-pointer"
 //           >
 //             <MyAvatar size={36} />
 //             <span className="sr-only">Open profile menu</span>
@@ -278,7 +281,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
   return (
     <header className="h-16 bg-white dark:bg-[#111827] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20 px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2">
-      {/* Left side: Hamburger menu trigger for mobile/tablet + Page context */}
+      {/* Left side: Hamburger menu trigger for mobile/tablet + Branding or Page context */}
       <div className="flex items-center gap-2.5 min-w-0">
         <button
           onClick={onOpenMobileMenu}
@@ -288,7 +291,15 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Quick welcome text or breadcrumb placeholder with icon instead of emoji */}
+        {/* Mobile-only brand identifier so the left side is never empty */}
+        <div className="sm:hidden flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-black bg-gradient-to-r from-[var(--color-brand-blue)] to-purple-600 bg-clip-text text-transparent truncate">
+            GleamLearn 
+          </span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+        </div>
+
+        {/* Desktop / tablet welcome text or breadcrumb context */}
         <div className="hidden sm:block min-w-0">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white truncate flex items-center gap-1.5">
             <span>Welcome back, Scholar{firstName ? ` ${firstName}` : ''}</span>
