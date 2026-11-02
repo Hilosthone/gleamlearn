@@ -7,10 +7,13 @@
  *   GET  /xp/history            → XpTransaction[] { id, amount, source, description, createdAt }, newest first
  *   GET  /coins                 → { balance, ... }
  *   GET  /coins/history         → CoinTransaction[] { id, amount, type: 'EARN'|'SPEND', source, description, createdAt }
- *   GET  /streak                → { currentStreak, longestStreak, checkedInToday, recoveryTokens, lastCheckInDate }
- *   GET  /streak/calendar       → { checkInDates: 'YYYY-MM-DD'[] }
- *   POST /streak/check-in       → once per day (400 if already checked in); no XP is awarded
- *   POST /streak/recover        → spends a recovery token (400 without tokens or when already active today)
+ *   GET  /streak                → { currentStreak, longestStreak, activeToday, recoveryTokens (= recoveries left this month),
+ *                                   recovery: { missedDays, nextMissedDay, remainingThisMonth, monthlyAllowance, recoverable, reason } }
+ *   GET  /streak/calendar?month=YYYY-MM → { checkInDates, month, days: [{ date, kind: active|recovered|missed|today_pending }] }
+ *   GET  /streak/history        → { history, recoveries: [{ missedDate, recoveredOn, streakBefore }] }
+ *   POST /streak/recover { missedDate } → recovers ONE missed day (the oldest); 4 per calendar month
+ *   POST /engagement/daily      → the first signed-in visit of the day counts towards the streak (lib/engagement.ts);
+ *                                 the old POST /streak/check-in still exists but the app no longer has a button for it
  *   GET  /achievements (public) → { achievements: Achievement[] }; GET /achievements/me → { unlockedAchievements: [{ achievement, unlockedAt }] }
  *   GET  /badges (public)       → { badges: Badge[] };             GET /badges/me → { earnedBadges: [{ badge, earnedAt }] }
  *   GET  /leaderboards/{global|weekly|monthly} and /leaderboards/country?name= (public) → { leaderboard: [{ rank, userId, name, totalXp }] }
@@ -20,7 +23,7 @@
  */
 
 import { achievementsApi, badgesApi, coinsApi, leaderboardsApi, levelsApi, masteryApi, progressApi, streaksApi, studySessionsApi, xpApi } from './api.ts';
-import { invalidateLearnerStats, type StreakSummary } from './learning.ts';
+import { invalidateLearnerStats, toStreakRecovery, type StreakSummary } from './learning.ts';
 
 type Raw = Record<string, unknown>;
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -84,6 +87,7 @@ export function toStreakStatus(res: unknown): StreakStatus {
     recoveryTokens: num(r.recoveryTokens),
     lastCheckInDate: typeof r.lastCheckInDate === 'string' ? r.lastCheckInDate : null,
     today: typeof r.today === 'string' ? r.today : null,
+    recovery: toStreakRecovery(r.recovery),
   };
 }
 
@@ -94,22 +98,80 @@ export function toCheckInDates(res: unknown): string[] {
   return Array.isArray(d) ? d.filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)) : [];
 }
 
-/** Recovery only makes sense when the streak is broken: the last check-in is older than yesterday (UTC, like the backend). */
-/** The backend decides whether the streak is broken (in its streak time zone); a token restores it. */
+/**
+ * The backend decides (in its streak time zone) which days were missed and whether the recoveries left this month
+ * can close the gap. An older backend without `recovery` falls back to the token count.
+ */
 export function canRecoverStreak(s: StreakStatus): boolean {
+  if (s.recovery) return s.recovery.recoverable && s.recovery.missedDays.length > 0 && s.recovery.nextMissedDay !== null;
   return s.recoveryTokens > 0 && !s.checkedInToday && s.brokenStreak > 0;
 }
 
+/** What the learner is told about missed days (null when nothing was missed). */
+export function recoveryMessage(r: StreakSummary['recovery']): string | null {
+  if (!r || !r.missedDays.length) return null;
+  const missed = r.missedDays.length === 1 ? 'You missed a day' : `You missed ${r.missedDays.length} days`;
+  const left = `${r.remainingThisMonth} of ${r.monthlyAllowance} recover${r.monthlyAllowance === 1 ? 'y' : 'ies'} left this month`;
+  if (r.recoverable) {
+    return r.missedDays.length === 1
+      ? `${missed}. Recover it to keep your ${r.brokenStreak}-day streak (${left}).`
+      : `${missed}. Each missed day needs its own recovery: recover all ${r.missedDays.length} to restore your ${r.brokenStreak}-day streak (${left}).`;
+  }
+  if (r.reason === 'allowance_exhausted') return `${missed} and have used all ${r.monthlyAllowance} recoveries this month, so your streak started again today.`;
+  return `${missed}, more than the ${r.remainingThisMonth} recover${r.remainingThisMonth === 1 ? 'y' : 'ies'} you have left this month, so your streak started again today.`;
+}
+
+export type CalendarDayKind = 'active' | 'recovered' | 'missed' | 'today_pending';
+
+/** GET /streak/calendar → day kinds by date (`days`); an older backend's checkInDates count as active. */
+export function toStreakCalendar(res: unknown): { month: string | null; kinds: Record<string, CalendarDayKind> } {
+  const r = (res ?? {}) as Raw;
+  const kinds: Record<string, CalendarDayKind> = {};
+  const days = Array.isArray(r.days) ? (r.days as unknown[]) : null;
+  if (days) {
+    for (const d of days) {
+      const x = (d ?? {}) as Raw;
+      const k = x.kind;
+      if (typeof x.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (k === 'active' || k === 'recovered' || k === 'missed' || k === 'today_pending')) kinds[x.date] = k;
+    }
+  } else {
+    for (const d of toCheckInDates(res)) kinds[d] = 'active';
+  }
+  return { month: typeof r.month === 'string' ? r.month : null, kinds };
+}
+
+export interface RecoveryRecord {
+  missedDate: string;
+  recoveredOn: string;
+  streakBefore: number;
+}
+
+export function toRecoveryHistory(res: unknown): RecoveryRecord[] {
+  return rows(res, 'recoveries')
+    .filter((x) => typeof x.missedDate === 'string')
+    .map((x) => ({ missedDate: str(x.missedDate).slice(0, 10), recoveredOn: str(x.recoveredOn).slice(0, 10), streakBefore: num(x.streakBefore) }))
+    .sort((a, b) => b.missedDate.localeCompare(a.missedDate));
+}
+
 /** A month grid (Monday first) marking checked-in days. `month` is 0-based. */
-export function calendarMonth(checkInDates: string[], year: number, month: number): { day: number | null; date: string | null; checkedIn: boolean }[] {
-  const set = new Set(checkInDates);
+export interface CalendarCell {
+  day: number | null;
+  date: string | null;
+  checkedIn: boolean;
+  kind: CalendarDayKind | null;
+}
+
+/** A month grid (Monday first). `marks` is a list of streak days or the calendar's day kinds. `month` is 0-based. */
+export function calendarMonth(marks: string[] | Record<string, CalendarDayKind>, year: number, month: number): CalendarCell[] {
+  const kinds: Record<string, CalendarDayKind> = Array.isArray(marks) ? Object.fromEntries(marks.map((d) => [d, 'active' as const])) : marks;
   const first = new Date(Date.UTC(year, month, 1));
   const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const lead = (first.getUTCDay() + 6) % 7;
-  const cells: { day: number | null; date: string | null; checkedIn: boolean }[] = Array.from({ length: lead }, () => ({ day: null, date: null, checkedIn: false }));
+  const cells: CalendarCell[] = Array.from({ length: lead }, () => ({ day: null, date: null, checkedIn: false, kind: null }));
   for (let d = 1; d <= days; d++) {
     const date = isoDay(new Date(Date.UTC(year, month, d)));
-    cells.push({ day: d, date, checkedIn: set.has(date) });
+    const kind = kinds[date] ?? null;
+    cells.push({ day: d, date, checkedIn: kind === 'active' || kind === 'recovered', kind });
   }
   return cells;
 }
@@ -238,7 +300,7 @@ export function buildActivityTimeline(input: { xp: LedgerEntry[]; coins: LedgerE
     ...input.xp.map((e) => ({ id: `xp-${e.id}`, kind: 'xp' as const, title: e.description || humanizeSource(e.source), detail: `${sign(e.amount)} XP`, at: e.at })),
     ...input.coins.map((e) => ({ id: `coins-${e.id}`, kind: 'coins' as const, title: e.description || humanizeSource(e.source), detail: `${sign(e.amount)} coins`, at: e.at })),
     ...input.sessions.map((s) => ({ id: `study-${s.id}`, kind: 'study' as const, title: s.title, detail: `${s.minutes} min studied`, at: s.at })),
-    ...input.checkIns.map((d) => ({ id: `check-in-${d}`, kind: 'check-in' as const, title: 'Daily check-in', detail: 'Streak kept', at: `${d}T00:00:00.000Z` })),
+    ...input.checkIns.map((d) => ({ id: `check-in-${d}`, kind: 'check-in' as const, title: 'Streak day', detail: 'Streak kept', at: `${d}T00:00:00.000Z` })),
   ];
   return items.filter((i) => Number.isFinite(Date.parse(i.at))).sort(byDateDesc);
 }
@@ -251,6 +313,9 @@ export const loadXpLedger = async () => toXpLedger(await xpApi.getXpHistory());
 export const loadCoinLedger = async () => toCoinLedger(await coinsApi.getCoinHistory());
 export const loadStreakStatus = async () => toStreakStatus(await streaksApi.getStreakSummary());
 export const loadCheckInDates = async () => toCheckInDates(await streaksApi.getStreakCalendar());
+/** `month` is 'YYYY-MM' (the backend's streak time zone); the current month when omitted. */
+export const loadStreakCalendar = async (month?: string) => toStreakCalendar(await streaksApi.getStreakCalendar(undefined, month));
+export const loadRecoveryHistory = async () => toRecoveryHistory(await streaksApi.getStreakHistory());
 export async function loadAchievements(): Promise<AchievementItem[]> {
   const [catalog, mine] = await Promise.all([achievementsApi.getAllAchievements(), achievementsApi.getMyAchievements()]);
   return mergeAchievements(catalog, mine);
@@ -273,15 +338,14 @@ export async function loadLeaderboard(scope: LeaderboardScope, country?: string,
 export const loadStudyStats = async () => toStudyStats(await studySessionsApi.getStudySessionStats());
 export const loadStudySessions = async () => toStudySessions(await studySessionsApi.getStudySessionHistory());
 
-/** Daily check-in. The shared stats (Navbar streak) are refreshed afterwards. */
-export async function checkInToday(): Promise<void> {
-  await streaksApi.checkInStreak();
+/**
+ * Recovers one missed day (the oldest, `missedDate` = recovery.nextMissedDay); repeating it for the same day is
+ * harmless. Returns the streak afterwards. The shared stats (Navbar streak) are refreshed.
+ */
+export async function recoverStreak(missedDate?: string): Promise<{ currentStreak: number; message: string }> {
+  const res = ((await streaksApi.recoverStreak(missedDate ? { missedDate } : undefined)) ?? {}) as Raw;
   invalidateLearnerStats();
-}
-
-export async function recoverStreak(): Promise<void> {
-  await streaksApi.recoverStreak();
-  invalidateLearnerStats();
+  return { currentStreak: num(res.currentStreak), message: str(res.message) };
 }
 
 // ---------------------------------------------------------------------------------------------------------

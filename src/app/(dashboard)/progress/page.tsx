@@ -1,35 +1,41 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Trophy, Flame, Coins, Award, TrendingUp, Zap, BookOpen, CheckCircle2, Lock, Clock, CalendarDays, Shield, BarChart3, Medal } from 'lucide-react';
 import { LearningProgressView, LevelView } from '@/components/progress/ProgressExtras';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { useUrlParam } from '@/hooks/useUrlParam';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
-import { listEnrolledCourses, sharedLearnerStats } from '@/lib/learning';
+import { LEARNER_STATS_CHANGED_EVENT, listEnrolledCourses, sharedLearnerStats } from '@/lib/learning';
 import { relativeTime } from '@/lib/notifications';
+import { loadEngagementToday } from '@/lib/engagement';
+import { showToast } from '@/lib/toast';
 import {
   calendarMonth,
   canRecoverStreak,
-  checkInToday,
   humanizeSource,
   loadAchievements,
   loadBadges,
-  loadCheckInDates,
   loadCoinLedger,
   loadLeaderboard,
+  loadRecoveryHistory,
+  loadStreakCalendar,
   loadStudyStats,
   loadXpLedger,
   recoverStreak,
+  recoveryMessage,
+  type CalendarDayKind,
   type LeaderboardScope,
   type LedgerEntry,
 } from '@/lib/gamification';
 
 type View = 'dashboard' | 'learning' | 'level' | 'xp' | 'coins' | 'achievements' | 'streak' | 'leaderboard';
+const VIEWS: View[] = ['dashboard', 'learning', 'level', 'xp', 'coins', 'achievements', 'streak', 'leaderboard'];
 
 const panel = 'bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -38,7 +44,10 @@ const panel = 'bg-white dark:bg-[#111827] p-6 rounded-3xl border border-gray-200
  * invented ("Level 42 Scholar", "88.4% mastery", "142.5 hrs", a fixed leaderboard and calendar).
  */
 export default function ProgressGamificationHub() {
-  const [view, setView] = useState<View>('dashboard');
+  // ?view=streak (links from the dashboard, toasts and help articles) opens that tab until another is chosen
+  const wanted = useUrlParam('view');
+  const [chosen, setView] = useState<View | null>(null);
+  const view: View = chosen ?? (wanted && (VIEWS as string[]).includes(wanted) ? (wanted as View) : 'dashboard');
   return (
     <div className="w-full min-h-screen pb-16 space-y-8 animate-in fade-in duration-300">
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-4 sm:px-8 sm:py-5 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
@@ -283,98 +292,187 @@ function AchievementsView() {
   );
 }
 
+const DAY_STYLE: Record<CalendarDayKind, { cell: string; label: string }> = {
+  active: { cell: 'bg-orange-500 text-white font-bold', label: 'active' },
+  recovered: { cell: 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 font-bold ring-2 ring-inset ring-orange-400 border-dashed', label: 'recovered' },
+  missed: { cell: 'bg-red-50 dark:bg-red-950/30 text-red-500 line-through', label: 'missed' },
+  today_pending: { cell: 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 ring-2 ring-inset ring-gray-300 dark:ring-gray-600', label: 'today, not counted yet' },
+};
+
+const monthKeyOf = (year: number, month: number) => `${year}-${String(month + 1).padStart(2, '0')}`;
+const longDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 function StreakView() {
-  // Shared with the Navbar (one GET /streak); check-in and recovery invalidate it for both
+  // Shared with the Navbar (one GET /streak); recovery invalidates it for both
   const status = useApiQuery(() => sharedLearnerStats(), []);
-  const dates = useApiQuery(() => loadCheckInDates(), []);
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return { year: now.getUTCFullYear(), month: now.getUTCMonth() };
   });
+  const key = monthKeyOf(month.year, month.month);
+  const calendar = useApiQuery(() => loadStreakCalendar(key), [key]);
+  const history = useApiQuery(() => loadRecoveryHistory(), []);
+  const today = useApiQuery(() => loadEngagementToday(), []);
+  // a reward or the day's first visit (EngagementTracker) changed the stats: reload the streak and today's time
+  const retryStatus = status.retry;
+  const retryToday = today.retry;
+  useEffect(() => {
+    const onChange = () => {
+      retryStatus();
+      retryToday();
+    };
+    window.addEventListener(LEARNER_STATS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(LEARNER_STATS_CHANGED_EVENT, onChange);
+  }, [retryStatus, retryToday]);
   const refresh = () => {
     status.retry();
-    dates.retry();
+    calendar.retry();
+    history.retry();
   };
-  const checkIn = useAsyncAction(async () => {
-    await checkInToday();
+  const recover = useAsyncAction(async (_signal: AbortSignal, missedDate: string) => {
+    const res = await recoverStreak(missedDate);
+    showToast({ tone: 'success', title: `Recovered ${longDay(missedDate)}`, message: res.message || `Your streak is ${res.currentStreak} days.` });
     refresh();
-  });
-  const recover = useAsyncAction(async () => {
-    await recoverStreak();
-    refresh();
+    return res;
   });
   const s = status.data?.streak ?? null;
-  const cells = calendarMonth(dates.data ?? [], month.year, month.month);
+  const r = s?.recovery ?? null;
+  const cells = calendarMonth(calendar.data?.kinds ?? {}, month.year, month.month);
   const monthLabel = new Date(Date.UTC(month.year, month.month, 1)).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const nowKey = monthKeyOf(new Date().getUTCFullYear(), new Date().getUTCMonth());
   const shift = (delta: number) => setMonth(({ year, month: m }) => ({ year: m + delta < 0 ? year - 1 : m + delta > 11 ? year + 1 : year, month: (m + delta + 12) % 12 }));
+  const missedText = recoveryMessage(r);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className={`${panel} space-y-4`}>
-        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Your streak</h2>
-        {status.isLoading ? (
-          <LoadingState layout="detail" />
-        ) : !s ? (
-          status.error ? <ErrorState error={status.error} onRetry={status.retry} /> : <p className="text-xs text-gray-500">Your streak is not available right now.</p>
-        ) : (
-          <>
-            <p className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <Flame className="w-7 h-7 text-orange-500" aria-hidden="true" /> {s.currentStreak} {s.currentStreak === 1 ? 'day' : 'days'}
-            </p>
-            <p className="text-xs text-gray-500">Longest: {s.longestStreak} days · Recovery tokens: {s.recoveryTokens}</p>
-            <p className="text-[11px] text-gray-500">
-              Your streak counts the days you study: completing a lesson, submitting a quiz, test or exam, reviewing flashcards, or checking in below. Signing in alone doesn&apos;t count.
-            </p>
-            {s.checkedInToday ? (
-              <Alert variant="success">Today counts towards your streak.</Alert>
-            ) : (
-              <Button type="button" variant="orange" size="md" isLoading={checkIn.isPending} onClick={() => void checkIn.run()}>
-                Check in for today
-              </Button>
-            )}
-            {canRecoverStreak(s) && (
-              <div className="space-y-2">
-                <p className="text-[11px] text-gray-500">Your {s.brokenStreak}-day streak ended. You can use a recovery token to restore it.</p>
-                <Button type="button" variant="outline" size="sm" isLoading={recover.isPending} onClick={() => void recover.run()}>
-                  Use a recovery token
-                </Button>
-              </div>
-            )}
-            {(checkIn.error || recover.error) && <ErrorState error={(checkIn.error ?? recover.error)!} compact />}
-          </>
-        )}
-      </div>
-      <div className={`${panel} lg:col-span-2 space-y-4`}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" aria-hidden="true" /> {monthLabel}
-          </h2>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous month">‹</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next month">›</Button>
-          </div>
+      <div className="space-y-6">
+        <div className={`${panel} space-y-4`}>
+          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Your streak</h2>
+          {status.isLoading ? (
+            <LoadingState layout="detail" />
+          ) : !s ? (
+            status.error ? <ErrorState error={status.error} onRetry={status.retry} /> : <p className="text-xs text-gray-500">Your streak is not available right now.</p>
+          ) : (
+            <>
+              <p className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <Flame className="w-7 h-7 text-orange-500" aria-hidden="true" /> {s.currentStreak} {s.currentStreak === 1 ? 'day' : 'days'}
+              </p>
+              <p className="text-xs text-gray-500">
+                Longest: {s.longestStreak} days · Recoveries left this month: {r ? `${r.remainingThisMonth} of ${r.monthlyAllowance}` : s.recoveryTokens}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Opening GleamLearn each day counts that day automatically (days follow Nigerian time, WAT). Completing lessons, quizzes and flashcard reviews counts too.
+              </p>
+              {s.checkedInToday && <Alert variant="success">Today counts towards your streak.</Alert>}
+              {missedText && (
+                <div className="space-y-2 p-3 rounded-2xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/60 dark:bg-orange-950/20">
+                  <p className="text-xs text-gray-700 dark:text-gray-200">{missedText}</p>
+                  {r && r.missedDays.length > 1 && (
+                    <p className="text-[11px] text-gray-500">Missed: {r.missedDays.map(longDay).join(', ')}</p>
+                  )}
+                  {canRecoverStreak(s) && r?.nextMissedDay && (
+                    <Button type="button" variant="orange" size="sm" isLoading={recover.isPending} onClick={() => void recover.run(r.nextMissedDay!)}>
+                      Recover {longDay(r.nextMissedDay)}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {recover.error && <ErrorState error={recover.error} compact />}
+            </>
+          )}
         </div>
-        {dates.isLoading ? (
-          <LoadingState layout="cards" rows={1} />
-        ) : dates.error && !dates.data ? (
-          <ErrorState error={dates.error} onRetry={dates.retry} />
-        ) : (
-          <div className="grid grid-cols-7 gap-1.5 text-center" role="grid" aria-label={`Check-ins in ${monthLabel}`}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-              <span key={d} className="text-[10px] font-bold text-gray-400" role="columnheader">{d}</span>
-            ))}
-            {cells.map((c, i) => (
-              <span
-                key={c.date ?? `blank-${i}`}
-                role="gridcell"
-                aria-label={c.date ? `${c.date}${c.checkedIn ? ', checked in' : ''}` : undefined}
-                className={`h-9 rounded-lg text-xs flex items-center justify-center ${c.day === null ? '' : c.checkedIn ? 'bg-orange-500 text-white font-bold' : 'bg-gray-50 dark:bg-gray-900 text-gray-500'}`}
-              >
-                {c.day ?? ''}
-              </span>
-            ))}
+
+        <div className={`${panel} space-y-3`}>
+          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            <Clock className="w-4 h-4" aria-hidden="true" /> Learning time today
+          </h2>
+          {today.isLoading ? (
+            <LoadingState rows={1} />
+          ) : !today.data ? (
+            today.error ? <ErrorState error={today.error} onRetry={today.retry} compact /> : null
+          ) : (
+            <>
+              <p className="text-2xl font-black text-gray-900 dark:text-white">{today.data.activeMinutesToday} min</p>
+              <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-label="Time rewards earned today" aria-valuemin={0} aria-valuemax={today.data.maxBlocksPerDay} aria-valuenow={today.data.rewardedBlocksToday}>
+                <div className="h-full bg-amber-500" style={{ width: `${Math.min(100, (today.data.rewardedBlocksToday / today.data.maxBlocksPerDay) * 100)}%` }} />
+              </div>
+              <p className="text-[11px] text-gray-500">
+                {today.data.rewardedBlocksToday} of {today.data.maxBlocksPerDay} time rewards today
+                {today.data.nextRewardInSeconds !== null ? ` · next in about ${Math.max(1, Math.ceil(today.data.nextRewardInSeconds / 60))} min of active learning` : ' · daily limit reached'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Every 10 minutes of active learning earns {today.data.blockXp || 2} XP and {today.data.blockCoins || 2} coins, up to 60 minutes a day. Time counts while this tab is open and you are using it.
+                {today.data.dailyVisitRewarded ? ' Your daily visit reward is collected.' : ''}
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="lg:col-span-2 space-y-6">
+        <div className={`${panel} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" aria-hidden="true" /> {monthLabel}
+            </h2>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous month">‹</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => shift(1)} disabled={key >= nowKey} aria-label="Next month">›</Button>
+            </div>
           </div>
-        )}
+          {calendar.isLoading ? (
+            <LoadingState layout="cards" rows={1} />
+          ) : calendar.error && !calendar.data ? (
+            <ErrorState error={calendar.error} onRetry={calendar.retry} />
+          ) : (
+            <>
+              <div className="grid grid-cols-7 gap-1.5 text-center" role="grid" aria-label={`Streak days in ${monthLabel}`}>
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+                  <span key={d} className="text-[10px] font-bold text-gray-400" role="columnheader">{d}</span>
+                ))}
+                {cells.map((c, i) => (
+                  <span
+                    key={c.date ?? `blank-${i}`}
+                    role="gridcell"
+                    aria-label={c.date ? `${c.date}${c.kind ? `, ${DAY_STYLE[c.kind].label}` : ''}` : undefined}
+                    title={c.kind ? DAY_STYLE[c.kind].label : undefined}
+                    className={`h-9 rounded-lg text-xs flex items-center justify-center ${c.day === null ? '' : c.kind ? DAY_STYLE[c.kind].cell : 'bg-gray-50 dark:bg-gray-900 text-gray-400'}`}
+                  >
+                    {c.day ?? ''}
+                  </span>
+                ))}
+              </div>
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500" aria-label="Calendar key">
+                {(['active', 'recovered', 'missed', 'today_pending'] as CalendarDayKind[]).map((k) => (
+                  <li key={k} className="flex items-center gap-1.5">
+                    <span className={`w-3.5 h-3.5 rounded ${DAY_STYLE[k].cell}`} aria-hidden="true" />
+                    {k === 'active' ? 'Active day' : k === 'recovered' ? 'Recovered day' : k === 'missed' ? 'Missed' : 'Today (not counted yet)'}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <div className={`${panel} space-y-3`}>
+          <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Recovery history</h2>
+          {history.isLoading ? (
+            <LoadingState rows={1} />
+          ) : history.error && !history.data ? (
+            <ErrorState error={history.error} onRetry={history.retry} compact />
+          ) : !history.data?.length ? (
+            <p className="text-xs text-gray-500">You haven&apos;t recovered any days. If you miss a day, you can recover up to 4 missed days a month.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {history.data.map((h) => (
+                <li key={h.missedDate} className="py-2 flex items-center justify-between gap-3 text-xs">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{longDay(h.missedDate)}</span>
+                  <span className="text-gray-500">recovered on {longDay(h.recoveredOn)}{h.streakBefore ? ` · streak was ${h.streakBefore} days` : ''}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

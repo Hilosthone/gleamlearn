@@ -46,7 +46,15 @@ import Navbar from '@/components/layout/Navbar';
 import HamburgerMenu from '@/components/layout/HamburgerMenu';
 import MobileNav from '@/components/layout/MobileNav'; // <--- Import MobileNav
 import { OfflineBanner } from '@/components/ui/states';
-import { LearnerSessionProvider } from '@/components/auth/LearnerSessionProvider';
+import { LearnerSessionProvider, useOptionalLearnerSession } from '@/components/auth/LearnerSessionProvider';
+import { EngagementTracker } from '@/components/engagement/EngagementTracker';
+import { Toaster } from '@/components/ui/Toaster';
+
+/** Streak, daily-visit and active-time tracking for a signed-in, usable account (not on a frozen account). */
+function LearnerEngagement() {
+  const session = useOptionalLearnerSession();
+  return <EngagementTracker enabled={Boolean(session) && session?.accountStatus !== 'frozen'} />;
+}
 
 export default function DashboardLayout({
   children,
@@ -80,6 +88,8 @@ export default function DashboardLayout({
 
       {/* Mobile Bottom Navigation Bar */}
       <MobileNav />
+      <LearnerEngagement />
+      <Toaster />
     </div>
     </LearnerSessionProvider>
   );

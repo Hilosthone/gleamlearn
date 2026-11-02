@@ -79,13 +79,26 @@ async function main() {
     await p.goto(`${BASE}/welcome`);
     await p.eval(`localStorage.setItem('accessToken', ${JSON.stringify(a.token)})`);
 
-    await check('Dashboard: XP/coins/streak loaded once for Navbar + page (shared request)', async () => {
+    await check('Dashboard: the first visit counts the day and shows the reward toast; stats are shared by Navbar + page', async () => {
       apiCalls.length = 0;
       await p.goto(`${BASE}/dashboard`, ready(BELL));
+      await p.waitFor(`document.body.innerText.includes('+5 XP · +5 coins')`, { label: 'daily reward toast', timeout: 20000 });
       await sleep(2500);
-      const count = (path) => apiCalls.filter((c) => c === `GET ${path}`).length;
-      assert(count('/xp') === 1 && count('/coins') === 1 && count('/streak') === 1, `xp ${count('/xp')}, coins ${count('/coins')}, streak ${count('/streak')}`);
-      return 'GET /xp, /coins, /streak: 1 each (was 2 each)';
+      const count = (path, method = 'GET') => apiCalls.filter((c) => c === `${method} ${path}`).length;
+      // one load as the page opens and, because the visit changed the streak and the balances, one shared reload
+      assert(count('/engagement/daily', 'POST') === 1, `daily ${count('/engagement/daily', 'POST')}`);
+      assert([count('/xp'), count('/coins'), count('/streak')].every((n) => n >= 1 && n <= 2), `xp ${count('/xp')}, coins ${count('/coins')}, streak ${count('/streak')}`);
+      const s = await api('/streak', a.token);
+      assert(s.currentStreak === 1 && s.activeToday === true, `server streak ${s.currentStreak}`);
+      return `POST /engagement/daily once; GET /xp ${count('/xp')}, /coins ${count('/coins')}, /streak ${count('/streak')} (shared); streak 1`;
+    });
+
+    await check('Dashboard links the streak and reward help articles; a link opens that article', async () => {
+      await p.waitFor(`document.body.innerText.includes('Streaks, rewards and how things work')`, { label: 'help card' });
+      await p.eval(`[...document.querySelectorAll('a')].find((x) => x.textContent.trim() === 'Recovering missed days').click()`);
+      await p.waitFor(`location.pathname === '/support' && !!document.querySelector('#help-streak-recovery')`, { label: 'article', timeout: 20000 });
+      assert(/up to 4 recoveries each calendar month/.test(await text(p)), 'article text');
+      return '/support?article=streak-recovery';
     });
 
     await check('Navbar bell shows the real unread count (welcome notification)', async () => {
@@ -147,18 +160,16 @@ async function main() {
       await p.waitFor(`document.body.innerText.includes("Privacy settings aren't available yet")`, { label: 'privacy unavailable' });
     });
 
-    await check('/progress → Streak: check-in works, the calendar marks today, the Navbar streak updates', async () => {
-      await p.goto(`${BASE}/progress`, ready('h1'));
-      await clickIn(p, TAB, 'Streak');
-      await p.waitFor(`document.body.innerText.includes('Check in for today')`, { label: 'check-in button' });
-      await p.click('Check in for today');
-      await p.waitFor(`document.body.innerText.includes('Today counts towards your streak.')`, { label: 'checked in', timeout: 20000 });
-      const today = new Date().toISOString().slice(0, 10);
-      await p.waitFor(`!!document.querySelector('[aria-label="${today}, checked in"]')`, { label: 'calendar cell', timeout: 20000 });
-      assert(/1 day\b/.test(await text(p)), 'streak not 1 day');
-      const s = await api('/streak', a.token);
-      assert(s.currentStreak === 1 && s.checkedInToday === true, `server streak ${s.currentStreak}`);
-      return `server streak 1, checked in; ${today} marked`;
+    await check('/progress → Streak: no check-in button; today already counts; calendar, recoveries and learning time shown', async () => {
+      await p.goto(`${BASE}/progress?view=streak`, ready('h1'));
+      await p.waitFor(`document.body.innerText.includes('Today counts towards your streak.')`, { label: 'today counts', timeout: 20000 });
+      const t = await text(p);
+      assert(!t.includes('Check in for today'), 'the manual check-in button is still there');
+      assert(t.includes('Recoveries left this month: 4 of 4') && t.includes('Learning time today') && t.includes('Recovery history'), 'streak panels missing');
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      await p.waitFor(`!!document.querySelector('[aria-label="${today}, active"]')`, { label: 'calendar cell', timeout: 20000 });
+      assert(/1 day\b/.test(t), 'streak not 1 day');
+      return `${today} marked active; 4 of 4 recoveries`;
     });
 
     await check('/progress other views render real data or honest empty states', async () => {
@@ -177,10 +188,10 @@ async function main() {
       return 'overview, XP, coins, achievements, leaderboard';
     });
 
-    await check('/history: the check-in appears; assessments honestly unavailable; AI history empty state', async () => {
+    await check('/history: the streak day appears; assessments honestly unavailable; AI history empty state', async () => {
       await sleep(2000);
       await p.goto(`${BASE}/history`, ready('h1'));
-      await p.waitFor(`document.body.innerText.includes('Daily check-in')`, { label: 'check-in in activity', timeout: 20000 });
+      await p.waitFor(`document.body.innerText.includes('Streak day')`, { label: 'streak day in activity', timeout: 20000 });
       await clickIn(p, TAB, 'Assessments');
       await p.waitFor(`document.body.innerText.includes("Assessment history isn't available yet")`);
       await clickIn(p, TAB, 'AI');

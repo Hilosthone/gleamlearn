@@ -72,6 +72,42 @@ export interface StreakSummary {
   recoveryTokens: number;
   lastCheckInDate: string | null;
   today: string | null;
+  /** Missed days and this month's recoveries (GET /streak → recovery); null from an older backend. */
+  recovery: StreakRecovery | null;
+}
+
+/**
+ * GET /streak → recovery. Each missed day needs its own recovery (oldest first); 4 recoveries per calendar month.
+ * `recoverable` is false when the recoveries left cannot close the whole gap (none are spent in that case).
+ */
+export interface StreakRecovery {
+  missedDays: string[];
+  nextMissedDay: string | null;
+  remainingThisMonth: number;
+  monthlyAllowance: number;
+  recoverable: boolean;
+  reason: 'none' | 'allowance_exhausted' | 'gap_too_long' | null;
+  brokenStreak: number;
+  streakIfRecovered: number;
+}
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function toStreakRecovery(v: unknown): StreakRecovery | null {
+  if (!v || typeof v !== 'object') return null;
+  const r = v as Record<string, unknown>;
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
+  const reason = r.reason === 'none' || r.reason === 'allowance_exhausted' || r.reason === 'gap_too_long' ? r.reason : null;
+  return {
+    missedDays: Array.isArray(r.missedDays) ? r.missedDays.filter((d): d is string => typeof d === 'string' && DAY_RE.test(d)) : [],
+    nextMissedDay: typeof r.nextMissedDay === 'string' && DAY_RE.test(r.nextMissedDay) ? r.nextMissedDay : null,
+    remainingThisMonth: n(r.remainingThisMonth),
+    monthlyAllowance: n(r.monthlyAllowance) || 4,
+    recoverable: r.recoverable === true,
+    reason,
+    brokenStreak: n(r.brokenStreak),
+    streakIfRecovered: n(r.streakIfRecovered),
+  };
 }
 
 export interface LearnerStats {
@@ -180,6 +216,7 @@ export async function loadLearnerStats(): Promise<LearnerStats> {
             recoveryTokens: num(v.recoveryTokens),
             lastCheckInDate: typeof v.lastCheckInDate === 'string' ? v.lastCheckInDate : null,
             today: typeof v.today === 'string' ? v.today : null,
+            recovery: toStreakRecovery(v.recovery),
           }
         : null,
     ),

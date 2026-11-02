@@ -819,3 +819,60 @@ The UI maps responses by status, with message checks only where the backend uses
   | Browser: `responsive` (new; 29 pages × 320/375/390/768/1024/1366/1440 px, no horizontal scroll, no redirect, menu reachable) | 203/203 |
   | Browser: `learner-core`, `library`, `learner-rest`, `ai`, `practice`, `admin`, `learner-profile` | 11/11, 11/11, 11/11, 11/11, 7/7, 9/9, 14/14 |
   | Browser: `registration` | 22/23. The failing step logs in again after a password reset and gets a 429 from the per-IP login limit (5 per minute), after the suite's own reconciliation logins. Auth was not changed in this batch. |
+
+---
+
+## Batch 33 (2026-11-02): Automatic streak, recovery, rewards, toasts, YouTube materials, help
+
+**Status:** ✅ Verified locally (checks below). Not deployed. Backend contract: `mycoursea-backend` Batch 34.
+
+**Streak and rewards**
+- `src/components/engagement/EngagementTracker.tsx` (in the learner layout, not on frozen accounts):
+  - On opening the app it calls `POST /engagement/daily`. The first visit of the day counts towards the streak and earns 5 XP + 5 coins; repeats are harmless.
+  - Every 60 s it sends a heartbeat while the learner is active: the tab is visible and they clicked, typed, scrolled or tapped within 2 minutes.
+  - It sends one `active: false` when they stop, and immediately when the tab is hidden.
+  - A new day while the app is open counts too. A first visit that failed offline is retried on the next heartbeat.
+  - Failures are silent.
+- `src/lib/toast.ts` and `src/components/ui/Toaster.tsx` (new):
+  - in-app toasts for rewards, the recovery prompt and results;
+  - at most 4 at once, announced politely;
+  - links are in-app only.
+  - These are **not** push notifications. The server also saves rewards in Notifications. Browser push is not claimed anywhere.
+- Progress → Streak (`/progress?view=streak`):
+  - The "Check in for today" button is removed.
+  - Shows recoveries left this month (of 4) and the missed days, with a "Recover <day>" button for the oldest missed day (one recovery per day).
+  - Explains when a gap cannot be recovered.
+  - The month calendar marks active, recovered (outlined, lighter), missed and today separately, with a key.
+  - Adds recovery history and today's learning time (minutes, rewards x/6, time to the next reward).
+- Dashboard: a recovery banner when days were missed, and a "Streaks, rewards and how things work" card linking to the help articles.
+- History: check-ins are now labelled "Streak days".
+
+**YouTube**
+- `YoutubeWorkspace.tsx`, transcript panel:
+  - a status badge;
+  - the reason for a failure, titled by code;
+  - "Try YouTube's captions again" only when retrying can help, with progress text;
+  - caption-file upload (`.vtt`/`.srt`, checked in the browser before uploading);
+  - paste;
+  - "Replace the transcript" when one exists;
+  - the transcript's source (YouTube captions, automatic captions and their language, a caption file, or pasted).
+- `YoutubeMaterials.tsx` (new): an accordion. "Make study material" (the generate form; the result appears in place with a toast) plus sections for lessons, summaries and notes, flashcards, quizzes and mock exams, and plans, each with a count.
+- Creating a session shows that captions are being read.
+
+**Help & Support** (`src/lib/support.ts`)
+- New or updated articles: how the streak works, recovering missed days, the streak calendar, the daily visit reward, rewards for learning time, how XP and coins are earned, reward and streak messages (no push yet), learning from a YouTube video, and when a transcript can't be fetched.
+- Links to the relevant pages. `/support?article=<id>` scrolls to and highlights an article.
+
+**Checks**
+
+| Check | Result |
+|---|---|
+| `npm test` | 203/203 (new `engagement-streak.test.mjs`: 10 tests) |
+| `npx tsc --noEmit` | 0 errors |
+| `eslint` on the changed files | clean (`api.ts` still has the same 390 pre-existing `any` errors as before) |
+| `next build` | ok |
+| backend `test/live/frontend-engagement.mjs` (these modules against the live local backend) | 17/17 |
+| Browser `learner-core` (updated for the automatic streak: reward toast, help links, Streak tab without a button, Lagos-day calendar cell) | 11/12. The failure is pre-existing: the test clicks an "XP & Level" tab, but the tab has been called "XP history" since before this batch. |
+| Browser `self-learning` (updated: the failure reason is shown, no retry button when retrying cannot help, caption upload, materials accordion, transcript source) | 11/11. One earlier run hit a 429 in the mobile global search, unrelated to this batch. |
+| Browser `navigation` | 4/4 |
+| Browser `learner-rest` (help title updated) | 8/11. The 3 failures are stale assertions from 2026-10-26: they expect the planner calendar, AI plan generation and in-app reports to be "unavailable", but these were added on 2026-10-29. None of those files changed in this batch. |

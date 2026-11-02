@@ -2,16 +2,18 @@
 
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, ExternalLink, RotateCcw, Send, User } from 'lucide-react';
+import { ArrowLeft, Bot, ExternalLink, FileUp, RotateCcw, Send, User } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { useAsyncAction, type AsyncActionState } from '@/hooks/useAsyncAction';
 import { ErrorState, LoadingState, SlowNotice } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
-import { GenerateForm } from '@/components/learning/GenerateForm';
-import { GeneratedFrom } from '@/components/learning/GeneratedFrom';
+import { YoutubeMaterials } from '@/components/ai/YoutubeMaterials';
+import { showToast } from '@/lib/toast';
 import {
+  TRANSCRIPT_FAILURE_TITLE,
   answerParts,
+  captionFileProblem,
   askVideo,
   embedUrl,
   formatClock,
@@ -19,7 +21,10 @@ import {
   loadYoutubeSession,
   refetchTranscript,
   setTranscript,
+  transcriptSourceLabel,
+  uploadCaptions,
   type SessionMessage,
+  type YoutubeSession,
 } from '@/lib/self-learning';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
@@ -52,11 +57,15 @@ export function YoutubeWorkspace({ id }: { id: string }) {
   const savePaste = useAsyncAction(async () => {
     await setTranscript(id, pasted);
     setPasted('');
+    showToast({ tone: 'success', title: 'Transcript saved', message: 'You can now ask about the video and make study material from it.' });
     session.retry();
+    return true;
   });
   const refetch = useAsyncAction(async () => {
-    await refetchTranscript(id);
+    const next = await refetchTranscript(id);
+    if (next.transcriptStatus === 'ready') showToast({ tone: 'success', title: 'Transcript ready', message: `${next.segmentCount} lines from the video's captions.` });
     session.retry();
+    return next;
   });
 
   const back = (
@@ -109,46 +118,7 @@ export function YoutubeWorkspace({ id }: { id: string }) {
             )}
           </div>
 
-          <section className={`${card} p-4 sm:p-5 space-y-3`} aria-label="Transcript">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Transcript</h2>
-              {ready && <span className="text-[11px] text-gray-500">{s.transcriptSource === 'learner' ? 'Pasted by you' : "From the video's captions"}</span>}
-            </div>
-            {ready ? (
-              s.segments.length ? (
-                <ol className="max-h-80 overflow-y-auto space-y-1 pr-1">
-                  {s.segments.map((seg, i) => (
-                    <li key={i} className="flex gap-2 text-xs">
-                      <button type="button" onClick={() => seek(seg.start)} className="shrink-0 font-mono text-purple-600 hover:underline" aria-label={`Play from ${formatClock(seg.start)}`}>
-                        {formatClock(seg.start)}
-                      </button>
-                      <span className="text-gray-700 dark:text-gray-300 break-words">{seg.text}</span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line max-h-80 overflow-y-auto break-words">{s.transcriptText}</p>
-              )
-            ) : (
-              <div className="space-y-3">
-                <Alert variant="warning" title="No transcript yet">
-                  {s.transcriptError ?? 'This video has no transcript we could use.'} The AI only answers from a transcript, so it won&apos;t guess what the video says.
-                </Alert>
-                <Button type="button" size="sm" variant="outline" isLoading={refetch.isPending} onClick={() => void refetch.run()}>
-                  <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" /> Try YouTube&apos;s captions again
-                </Button>
-                {refetch.error && <ErrorState error={refetch.error} compact />}
-                <form className="space-y-2" aria-label="Paste a transcript" onSubmit={(e) => { e.preventDefault(); void savePaste.run(); }}>
-                  <label className="block space-y-1">
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Or paste the transcript or your notes (lines starting with [mm:ss] become timestamps)</span>
-                    <textarea className={`${input} min-h-32`} value={pasted} maxLength={200000} onChange={(e) => setPasted(e.target.value)} />
-                  </label>
-                  {savePaste.error && <ErrorState error={savePaste.error} compact />}
-                  <Button type="submit" size="sm" variant="purple" isLoading={savePaste.isPending} disabled={pasted.trim().length < 20}>Save transcript</Button>
-                </form>
-              </div>
-            )}
-          </section>
+          <TranscriptPanel s={s} seek={seek} refetch={refetch} pasted={pasted} setPasted={setPasted} savePaste={savePaste} onUploaded={session.retry} />
         </div>
 
         {/* Ask the AI about the video */}
@@ -203,14 +173,134 @@ export function YoutubeWorkspace({ id }: { id: string }) {
             </form>
           </section>
 
-          {ready && (
-            <section className={`${card} p-4 sm:p-5`}>
-              <GenerateForm heading="Make study material from this video" source={{ sourceType: 'youtube', sourceId: id }} personalCourseId={s.personalCourseId ?? undefined} defaultKind="summary" />
-            </section>
-          )}
         </div>
       </div>
-      <GeneratedFrom filter={{ youtubeSessionId: id }} title="Made from this video" />
+      <YoutubeMaterials sessionId={id} personalCourseId={s.personalCourseId} ready={ready} />
     </div>
+  );
+}
+
+type Action = AsyncActionState<[], unknown>;
+
+/** Transcript status: the transcript itself, or why it is missing, with retry, caption upload and paste. */
+function TranscriptPanel({
+  s,
+  seek,
+  refetch,
+  pasted,
+  setPasted,
+  savePaste,
+  onUploaded,
+}: {
+  s: YoutubeSession;
+  seek: (seconds: number) => void;
+  refetch: Action;
+  pasted: string;
+  setPasted: (v: string) => void;
+  savePaste: Action;
+  onUploaded: () => void;
+}) {
+  const ready = s.transcriptStatus === 'ready';
+  const [replacing, setReplacing] = useState(false);
+  const source = transcriptSourceLabel(s);
+  const showRetry = !ready && s.transcriptRetryable !== false;
+
+  return (
+    <section className={`${card} p-4 sm:p-5 space-y-3`} aria-label="Transcript">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">Transcript</h2>
+        <span
+          className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg ${
+            ready ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' : s.transcriptStatus === 'processing' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+          }`}
+        >
+          {ready ? `Ready · ${s.segmentCount || 'no'} timestamped lines` : s.transcriptStatus === 'processing' ? 'Fetching…' : 'Not available yet'}
+        </span>
+      </div>
+      {ready && source && <p className="text-[11px] text-gray-500">{source}</p>}
+
+      {ready ? (
+        <>
+          {s.segments.length ? (
+            <ol className="max-h-80 overflow-y-auto space-y-1 pr-1">
+              {s.segments.map((seg, i) => (
+                <li key={i} className="flex gap-2 text-xs">
+                  <button type="button" onClick={() => seek(seg.start)} className="shrink-0 font-mono text-purple-600 hover:underline" aria-label={`Play from ${formatClock(seg.start)}`}>
+                    {formatClock(seg.start)}
+                  </button>
+                  <span className="text-gray-700 dark:text-gray-300 break-words">{seg.text}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line max-h-80 overflow-y-auto break-words">{s.transcriptText}</p>
+          )}
+          <button type="button" className="text-xs font-semibold text-purple-600 hover:underline" aria-expanded={replacing} onClick={() => setReplacing((v) => !v)}>
+            {replacing ? 'Keep this transcript' : 'Replace the transcript (caption file or paste)'}
+          </button>
+        </>
+      ) : (
+        <Alert variant="warning" title={s.transcriptErrorCode ? TRANSCRIPT_FAILURE_TITLE[s.transcriptErrorCode] : 'No transcript yet'}>
+          {s.transcriptError ?? 'This video has no transcript we could use.'} The AI only answers from a transcript, so it won&apos;t guess what the video says.
+        </Alert>
+      )}
+
+      {showRetry && (
+        <div className="space-y-2">
+          <Button type="button" size="sm" variant="outline" isLoading={refetch.isPending} onClick={() => void refetch.run()}>
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" /> Try YouTube&apos;s captions again
+          </Button>
+          {refetch.isPending && <p role="status" className="text-[11px] text-gray-500">Asking YouTube for the captions. This can take up to 15 seconds.</p>}
+          {refetch.error && <ErrorState error={refetch.error} compact />}
+        </div>
+      )}
+
+      {(!ready || replacing) && (
+        <div className="space-y-4 pt-1">
+          <CaptionUpload id={s.id} onUploaded={() => { setReplacing(false); onUploaded(); }} />
+          <form className="space-y-2" aria-label="Paste a transcript" onSubmit={(e) => { e.preventDefault(); void savePaste.run().then((ok) => { if (ok) setReplacing(false); }); }}>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Or paste the transcript or your notes (lines starting with [mm:ss] become timestamps)</span>
+              <textarea className={`${input} min-h-32`} value={pasted} maxLength={200000} onChange={(e) => setPasted(e.target.value)} />
+            </label>
+            {savePaste.error && <ErrorState error={savePaste.error} compact />}
+            <Button type="submit" size="sm" variant="purple" isLoading={savePaste.isPending} disabled={pasted.trim().length < 20}>Save transcript</Button>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Upload the video's caption file (.vtt or .srt, up to 2 MB); cue times become timestamp links. */
+function CaptionUpload({ id, onUploaded }: { id: string; onUploaded: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const problem = file ? captionFileProblem(file) : null;
+  const upload = useAsyncAction(async () => {
+    if (!file) return null;
+    const next = await uploadCaptions(id, file);
+    showToast({ tone: 'success', title: 'Caption file added', message: `${next.segmentCount} timestamped lines are now the transcript.` });
+    setFile(null);
+    onUploaded();
+    return next;
+  });
+  return (
+    <form className="space-y-2" aria-label="Upload a caption file" onSubmit={(e) => { e.preventDefault(); if (file && !problem) void upload.run(); }}>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Upload the video&apos;s caption file (.vtt or .srt, up to 2 MB)</span>
+        <input
+          type="file"
+          accept=".vtt,.srt,text/vtt,application/x-subrip"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-purple-50 file:text-purple-700 file:font-semibold"
+        />
+      </label>
+      {problem && <p role="alert" className="text-[11px] text-red-600">{problem}</p>}
+      {upload.error && <ErrorState error={upload.error} compact />}
+      {upload.isPending && <p role="status" className="text-[11px] text-gray-500">Reading the caption file…</p>}
+      <Button type="submit" size="sm" variant="outline" isLoading={upload.isPending} disabled={!file || Boolean(problem)}>
+        <FileUp className="w-3.5 h-3.5" aria-hidden="true" /> Use this caption file
+      </Button>
+    </form>
   );
 }

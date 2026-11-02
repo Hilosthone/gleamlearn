@@ -96,7 +96,7 @@ async function main() {
     await check('/support: help is searchable; reports are offered by email while in-app sending is unavailable', async () => {
       await p.goto(`${BASE}/support`, ready('h1'));
       await p.fill('input', 'streak');
-      await p.waitFor(has('Keeping your streak'));
+      await p.waitFor(has('How your streak works'));
       assert(!/Streak Freeze|shop|rubric-based/i.test(await text(p)), 'false help content');
       await clickIn(p, '[role=tab]', 'Report a problem');
       await p.waitFor(has("Sending from the app isn't available yet"), { timeout: 20000 });

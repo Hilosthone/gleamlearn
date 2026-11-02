@@ -91,6 +91,9 @@ export function YoutubeSessions() {
             </label>
           )}
         </div>
+        {create.isPending && (
+          <p role="status" className="text-xs text-gray-500">Checking the video and reading its captions. This can take up to about 20 seconds.</p>
+        )}
         {create.error && <ErrorState error={create.error} compact />}
         <Button type="submit" size="sm" variant="purple" isLoading={create.isPending} disabled={!videoId}>
           <Plus className="w-4 h-4" aria-hidden="true" /> Create session
@@ -125,7 +128,7 @@ export function YoutubeSessions() {
           ))}
         </ul>
       )}
-      <Alert variant="info">Transcripts come from YouTube&apos;s captions when a video has them. If a video has none, you can paste the transcript or your notes instead.</Alert>
+      <Alert variant="info">Transcripts come from YouTube&apos;s captions when a video has them. If a video has none, or YouTube refuses, you can upload its caption file (.vtt or .srt) or paste the transcript or your notes instead.</Alert>
     </div>
   );
 }

@@ -39,7 +39,7 @@ test('XP and coin ledgers map the real rows; spending is negative; newest first'
 
 test('streak status (backend decides broken/active, in its time zone) and when recovery is offered', () => {
   const base = toStreakStatus({ currentStreak: 3, longestStreak: 9, activeToday: false, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-24', today: '2026-10-25' });
-  assert.deepEqual(base, { currentStreak: 3, longestStreak: 9, checkedInToday: false, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-24', today: '2026-10-25' });
+  assert.deepEqual(base, { currentStreak: 3, longestStreak: 9, checkedInToday: false, brokenStreak: 0, recoveryTokens: 1, lastCheckInDate: '2026-10-24', today: '2026-10-25', recovery: null });
   assert.equal(canRecoverStreak(base), false, 'alive: nothing to recover');
   const broken = toStreakStatus({ currentStreak: 0, longestStreak: 9, activeToday: false, brokenStreak: 4, recoveryTokens: 1, lastCheckInDate: '2026-10-20' });
   assert.equal(canRecoverStreak(broken), true);

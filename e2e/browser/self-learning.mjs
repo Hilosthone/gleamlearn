@@ -160,8 +160,10 @@ async function main() {
       await clickIn(p, 'button', 'Create session');
       await p.waitFor(`location.pathname.startsWith('/ai/youtube/')`, { label: 'workspace', timeout: 30000 });
       const sessionPath = await p.eval('location.pathname');
-      await p.waitFor(has('No transcript yet'), { timeout: 20000 });
+      await p.waitFor(has('Fetching transcripts is turned off'), { timeout: 20000 }); // the reason, not a vague "no transcript"
       assert(await p.eval(`document.querySelector('textarea[placeholder="Add a transcript first"]').disabled`), 'asking allowed without transcript');
+      assert(!(await p.eval(`document.body.innerText.includes("Try YouTube's captions again")`)), 'retry offered although it cannot help');
+      assert(await p.eval(`!!document.querySelector('form[aria-label="Upload a caption file"] input[type=file][accept*=".vtt"]')`), 'no caption upload');
       assert(await p.eval(`!!document.querySelector('iframe[src^="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"]')`), 'no privacy-enhanced embed');
       return `${sessionPath} (YOUTUBE_NETWORK=off locally, so captions are not fetched)`;
     });
@@ -170,6 +172,9 @@ async function main() {
       await p.fill('form[aria-label="Paste a transcript"] textarea', TRANSCRIPT);
       await clickIn(p, 'button', 'Save transcript');
       await p.waitFor(`!!document.querySelector('[aria-label="Play from 0:42"]')`, { label: 'transcript segments', timeout: 20000 });
+      // materials are an accordion: "Make study material" is open while nothing has been made yet
+      await p.waitFor(`[...document.querySelectorAll('section[aria-label="Study material from this video"] button[aria-expanded]')].some((b) => b.textContent.includes('Make study material') && b.getAttribute('aria-expanded') === 'true')`, { label: 'materials accordion', timeout: 20000 });
+      assert(await p.eval(`document.body.innerText.includes('Pasted by you')`), 'transcript source not shown');
       await p.fill('section[aria-label="Questions about the video"] textarea', 'Where does the Calvin cycle happen?');
       await clickIn(p, 'button', 'Ask');
       await p.waitFor(`!!document.querySelector('ol[aria-label="Questions and answers"] li:nth-child(2)')`, { label: 'answer', timeout: 60000 });

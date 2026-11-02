@@ -17,7 +17,7 @@ const KIND_FILTERS: { id: 'all' | ActivityKind; label: string }[] = [
   { id: 'study', label: 'Study sessions' },
   { id: 'xp', label: 'XP' },
   { id: 'coins', label: 'Coins' },
-  { id: 'check-in', label: 'Check-ins' },
+  { id: 'check-in', label: 'Streak days' },
 ];
 
 /** The learner's real activity. Previously every log, count and date on this page was invented. */
@@ -32,7 +32,7 @@ export default function HistoryHub() {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">History</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Your study sessions, rewards, check-ins and AI conversations.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Your study sessions, rewards, streak days and AI conversations.</p>
           </div>
         </div>
         <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto" role="tablist">
@@ -123,7 +123,7 @@ function LearningHistory() {
           <EmptyState
             icon={History}
             title="Nothing here yet"
-            description="Completed study sessions, XP and coins you earn, and daily check-ins will be listed here."
+            description="Completed study sessions, XP and coins you earn, and your streak days will be listed here."
           />
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">

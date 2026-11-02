@@ -258,7 +258,9 @@ import { QueryState, LoadingState, EmptyState, ErrorState } from '@/components/u
 import { useLearnerSession } from '@/components/auth/LearnerSessionProvider';
 import { NextSteps } from '@/components/learning/NextSteps';
 import { DailyInspiration } from '@/components/learning/DailyInspiration';
-import { greeting, listEnrolledCourses, loadCourseRecommendations, recentNotifications, sharedLearnerStats, studyMinutes, type CourseRecommendations } from '@/lib/learning';
+import { LEARNER_STATS_CHANGED_EVENT, greeting, listEnrolledCourses, loadCourseRecommendations, recentNotifications, sharedLearnerStats, studyMinutes, type CourseRecommendations } from '@/lib/learning';
+import { canRecoverStreak, recoveryMessage } from '@/lib/gamification';
+import { DASHBOARD_HELP } from '@/lib/support';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 
@@ -314,6 +316,12 @@ export default function DashboardPage() {
 
   const s = stats.data;
   const streak = s?.streak?.currentStreak ?? null;
+  // the day's first visit is recorded as the app opens: reload when it changed the streak or the rewards
+  const retryStats = stats.retry;
+  useEffect(() => {
+    window.addEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
+    return () => window.removeEventListener(LEARNER_STATS_CHANGED_EVENT, retryStats);
+  }, [retryStats]);
 
   // State for Quick Nav Modal
   const [isQuickNavModalOpen, setIsQuickNavModalOpen] = useState(false);
@@ -400,6 +408,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {s?.streak && recoveryMessage(s.streak.recovery) && (
+        <div role="status" className={`${card} p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 border-orange-200 dark:border-orange-900/50`}>
+          <span className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500 flex items-center justify-center shrink-0">
+            <Flame className="w-4 h-4" aria-hidden="true" />
+          </span>
+          <p className="text-xs text-gray-700 dark:text-gray-200 flex-1">{recoveryMessage(s.streak.recovery)}</p>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link href="/progress?view=streak" className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs">
+              {canRecoverStreak(s.streak) ? 'Recover streak' : 'View streak'}
+            </Link>
+            <Link href="/support?article=streak-recovery" className="text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">How recovery works</Link>
+          </div>
+        </div>
+      )}
+
       {stats.isLoading ? (
         <LoadingState layout="cards" rows={4} label="Loading your stats…" />
       ) : (
@@ -417,7 +440,7 @@ export default function DashboardPage() {
             icon={Flame}
             tone="bg-orange-50 dark:bg-orange-950/40 text-orange-500"
             value={s?.streak ? `${s.streak.currentStreak} day${s.streak.currentStreak === 1 ? '' : 's'}` : '—'}
-            hint={s?.streak ? `Longest: ${s.streak.longestStreak} · ${s.streak.checkedInToday ? 'today counts' : 'study today to keep it'}` : 'Unavailable right now'}
+            hint={s?.streak ? `Longest: ${s.streak.longestStreak} · ${s.streak.checkedInToday ? 'today counts' : 'opening the app today counts'}` : 'Unavailable right now'}
           />
           <Stat
             label="Study time"
@@ -428,6 +451,25 @@ export default function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Help articles about streaks, rewards and YouTube materials (Help & Support) */}
+      <section aria-labelledby="dashboard-help" className={`${card} p-4 sm:p-5 space-y-3`}>
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="dashboard-help" className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-rose-500" aria-hidden="true" /> Streaks, rewards and how things work
+          </h2>
+          <Link href="/support" className="text-xs font-bold text-[var(--color-brand-blue)] hover:underline">All help</Link>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {DASHBOARD_HELP.map((a) => (
+            <li key={a.id}>
+              <Link href={`/support?article=${encodeURIComponent(a.id)}`} className="inline-block px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:border-[var(--color-brand-blue)]">
+                {a.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {/* Quick Navigation Toolbar (Displays Half + More Button) */}
       <section aria-labelledby="quick-navigation" className="space-y-3">

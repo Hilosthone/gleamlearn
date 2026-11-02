@@ -2414,6 +2414,8 @@ export interface StreakCheckInPayload {
 
 export interface StreakRecoverPayload {
   recoveryMethod?: string; // e.g., "standard_token"
+  /** The missed day being recovered (YYYY-MM-DD); makes a repeated request harmless. */
+  missedDate?: string;
   [key: string]: any;
 }
 
@@ -2440,8 +2442,8 @@ export const streaksApi = {
    * GET /api/v1/streak/calendar
    * Get calendar check-in map (array of check-in dates for grid UI widgets).
    */
-  getStreakCalendar: (token?: string) => 
-    apiRequest<any>('/streak/calendar', { method: 'GET', token }),
+  getStreakCalendar: (token?: string, month?: string) =>
+    apiRequest<any>(`/streak/calendar${month ? `?month=${encodeURIComponent(month)}` : ''}`, { method: 'GET', token }),
 
   /**
    * POST /api/v1/streak/check-in
@@ -3587,8 +3589,20 @@ export const youtubeSessionsApi = {
   remove: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   setTranscript: (id: string, text: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/transcript`, { method: 'PUT', body: { text } }),
   refetchTranscript: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/transcript/fetch`, { method: 'POST' }),
+  /** multipart: `file` = a .vtt or .srt caption file (max 2 MB) */
+  uploadCaptions: (id: string, form: FormData) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/transcript/captions`, { method: 'POST', body: form }),
   messages: (id: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/messages`, { method: 'GET' }),
   ask: (id: string, question: string) => apiRequest<unknown>(`/youtube-sessions/${encodeURIComponent(id)}/ask`, { method: 'POST', body: { question } }),
+};
+
+/**
+ * Daily-visit and active-time rewards. The server decides every amount; the client only reports that the
+ * learner is here (daily) and whether they are active (heartbeat, about once a minute).
+ */
+export const engagementApi = {
+  daily: () => apiRequest<unknown>('/engagement/daily', { method: 'POST' }),
+  heartbeat: (active: boolean) => apiRequest<unknown>('/engagement/heartbeat', { method: 'POST', body: { active } }),
+  today: () => apiRequest<unknown>('/engagement/today', { method: 'GET' }),
 };
 
 export const globalSearchApi = {

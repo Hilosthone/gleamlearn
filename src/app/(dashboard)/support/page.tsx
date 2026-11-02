@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { HelpCircle, LifeBuoy, Mail, MessageSquare, Search, Star } from 'lucide-react';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { useUrlParam } from '@/hooks/useUrlParam';
 import { ErrorState, LoadingState } from '@/components/ui/states';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
-import { HELP_ARTICLES, PROBLEM_CATEGORIES, REPORT_STATUS_LABEL, SUPPORT_EMAIL, loadMyReports, mailtoHref, reportsAvailable, submitFeedback, submitProblem } from '@/lib/support';
+import { HELP_ARTICLES, PROBLEM_CATEGORIES, helpArticle, REPORT_STATUS_LABEL, SUPPORT_EMAIL, loadMyReports, mailtoHref, reportsAvailable, submitFeedback, submitProblem } from '@/lib/support';
 
 const card = 'bg-white dark:bg-[#111827] rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs';
 const input =
@@ -23,6 +25,8 @@ const TABS: { id: Tab; label: string; icon: typeof HelpCircle }[] = [
 /** Help articles that describe the app as it is, and real problem reports / feedback (previously "received" without sending anything). */
 export default function SupportPage() {
   const [tab, setTab] = useState<Tab>('help');
+  // /support?article=streak-recovery (dashboard links): the Help tab, which opens first, scrolls to it
+  const article = helpArticle(useUrlParam('article'));
   const available = useApiQuery(() => reportsAvailable(), []);
 
   return (
@@ -53,7 +57,7 @@ export default function SupportPage() {
         ))}
       </div>
       <div role="tabpanel">
-        {tab === 'help' && <Help />}
+        {tab === 'help' && <Help focus={article?.id ?? null} />}
         {tab !== 'help' &&
           (available.isLoading ? (
             <LoadingState layout="detail" label="Checking support options…" />
@@ -69,8 +73,11 @@ export default function SupportPage() {
   );
 }
 
-function Help() {
+function Help({ focus }: { focus: string | null }) {
   const [q, setQ] = useState('');
+  useEffect(() => {
+    if (focus) document.getElementById(`help-${focus}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focus]);
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
     return s ? HELP_ARTICLES.filter((a) => `${a.topic} ${a.title} ${a.body}`.toLowerCase().includes(s)) : HELP_ARTICLES;
@@ -87,10 +94,15 @@ function Help() {
       ) : (
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {shown.map((a) => (
-            <li key={a.id} className={`${card} p-5 space-y-1`}>
+            <li key={a.id} id={`help-${a.id}`} className={`${card} p-5 space-y-1 scroll-mt-24 ${focus === a.id ? 'ring-2 ring-[var(--color-brand-blue)]' : ''}`}>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand-blue)]">{a.topic}</p>
               <h2 className="text-sm font-extrabold text-gray-900 dark:text-white">{a.title}</h2>
               <p className="text-xs text-gray-600 dark:text-gray-300">{a.body}</p>
+              {a.link && (
+                <Link href={a.link.href} className="inline-block pt-1 text-xs font-semibold text-[var(--color-brand-blue)] hover:underline">
+                  {a.link.label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>
